@@ -4,6 +4,9 @@ const multer = require('../middelware/multer');
 const cloudinary = require('../Data/cloudinary');
 const { Readable } = require('stream');
 const { sendWhatsAppMessage } = require('./whatsapp');
+const nodemailer = require("nodemailer");
+
+
 
 const addToCart = async (req, res) => {
   try {
@@ -370,13 +373,30 @@ const confirmPayment = async (req, res) => {
       await data.query("DELETE FROM cart WHERE user_id = ?", [user.id]);
     }
 
-    const message = `📦 *طلب جديد تم استلامه*\n\n👤 *العميل:* ${user.name}\n📞 *رقم الهاتف:* ${user.phone}\n💰 *الإجمالي:* ${total} جنيه\n💳 *طريقة الدفع:* ${payment_method}\n📍 *العنوان:* ${address}\n\n🛒 *المنتجات:*\n${itemList}\n📸 *صورة الدفع:* ${payment_screenshot}`;
-try{
-    await sendWhatsAppMessage("201104699278", message);
-  }catch(err)
-  {
-    res.send('not send');
-  }
+    
+    const message = `📦 طلب جديد\n👤 العميل: ${user.name}\n📞 رقم الهاتف: ${user.phone}\n💰 الإجمالي: ${total} جنيه\n💳 طريقة الدفع: ${payment_method}\n📍 العنوان: ${address}\n🛒 المنتجات:\n${itemList}\n📸 صورة الدفع: ${payment_screenshot}`;
+
+    // ======== إعداد Nodemailer مع Ethereal ========
+    let transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: "yassefsea274@gmail.com", // بريدك الحقيقي
+        pass: "vyobfqfeuiiepivu"       // استخدم App Password بدون فراغات
+      }
+    });
+
+    let info = await transporter.sendMail({
+      from: '"My Shop" <shop@example.com>',
+      to: "yassefsea111@gmail.com", // ممكن تحط أي بريد لتجربة
+      subject: "تأكيد الطلب الجديد",
+      text: message
+    });
+
+    console.log("Preview URL:", nodemailer.getTestMessageUrl(info));
+
+
+
+
     return res.status(200).send({
       message: "Payment confirmed successfully",
       order_id,
