@@ -1,0 +1,30 @@
+# بيمنع ملفات البيئة السرّية
+.env
+
+# بيمنع مجلد node_modules اللي بيحتوي على مكتبات ضخمة
+node_modules/
+
+# ملفات النظام المؤقتة
+.DS_Store
+Thumbs.db
+
+.wwebjs_auth/
+.wwebjs_cache/
+
+# ملفات الـ log
+*.log
+
+# مجلدات البناء (لو عندك React أو Next.js)
+dist/
+build/
+.next/
+out/
+
+# ملفات باك إند إضافية مش مهمة للرفع
+coverage/
+.tmp/
+.cache/
+
+# إعدادات شخصية
+.vscode/
+.idea/
