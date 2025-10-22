@@ -4,36 +4,39 @@ const multer = require('../middelware/multer');
 const cloudinary = require('../Data/cloudinary');
 const { Readable } = require('stream');
 const { sendWhatsAppMessage } = require('./whatsapp');
+
 const addToCart = async (req, res) => {
   try {
     const user = req.user;
+    if (!user) return res.status(401).send({ message: 'Unauthorized' });
+
     const { product_id, quantity, size, color } = req.body;
 
     if (quantity <= 0) return res.status(400).send({ message: 'Quantity must be greater than 0' });
     if (!size) return res.status(400).send({ message: 'Size is required' });
     if (!color) return res.status(400).send({ message: 'Color is required' });
 
-    const [product] = await data.query('SELECT id, stock, is_active FROM products WHERE id = ?', [product_id]);
-    if (product.length === 0 || !product[0].is_active) return res.status(404).send({ message: 'Product not found' });
-    if (product[0].stock < quantity) return res.status(400).send({ message: 'No stock available' });
+    const [products] = await data.query('SELECT id, stock, is_active FROM products WHERE id = ?', [product_id]);
+    if (products.length === 0 || !products[0].is_active) return res.status(404).send({ message: 'Product not found' });
+    if (products[0].stock < quantity) return res.status(400).send({ message: 'Not enough stock' });
 
-    let [cart] = await data.query('SELECT id FROM cart WHERE user_id = ?', [user.id]);
+    const [carts] = await data.query('SELECT id FROM cart WHERE user_id = ?', [user.id]);
     let cart_id;
-    if (cart.length === 0) {
-      const [newCart] = await data.query('INSERT INTO cart (user_id) VALUES (?)', [user.id]);
+    if (carts.length === 0) {
+      const [newCart] = await data.query('INSERT INTO cart (user_id,product_id,quantity) VALUES (?,?,?)', [user.id,product_id,quantity]);
       cart_id = newCart.insertId;
     } else {
-      cart_id = cart[0].id;
+      cart_id = carts[0].id;
     }
 
-    const [existingItem] = await data.query(
+    const [existingItems] = await data.query(
       'SELECT id, quantity FROM cart_items WHERE cart_id = ? AND product_id = ? AND size = ? AND color = ?',
       [cart_id, product_id, size, color]
     );
 
-    if (existingItem.length > 0) {
-      const newQuantity = existingItem[0].quantity + quantity;
-      await data.query('UPDATE cart_items SET quantity = ? WHERE id = ?', [newQuantity, existingItem[0].id]);
+    if (existingItems.length > 0) {
+      const newQuantity = existingItems[0].quantity + quantity;
+      await data.query('UPDATE cart_items SET quantity = ? WHERE id = ?', [newQuantity, existingItems[0].id]);
       return res.status(200).send({ message: 'Product quantity updated in cart', cart_id });
     }
 
@@ -44,9 +47,11 @@ const addToCart = async (req, res) => {
 
     return res.status(201).send({ message: 'Product added to cart successfully', cart_id });
   } catch (err) {
+    console.log(err);
     return res.status(500).send({ message: 'Server error' });
   }
 };
+
 
 const delFromCart = async (req, res) => {
   try {
