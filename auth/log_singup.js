@@ -46,12 +46,14 @@ const login = async (req, res) => {
     }
 
     const token = createToken(userInfo[0]);
+    
+res.cookie("token", token, {
+  httpOnly: true,
+  sameSite: "None", // <--- ضروري عشان cross-site
+  secure: true, // <--- لازم لما تستخدم SameSite=None
+  maxAge: 2 * 60 * 60 * 1000
+});
 
-    res.cookie("token", token, {
-      httpOnly: true,
-      sameSite: "Lax",
-      maxAge: 2 * 60 * 60 * 1000
-    });
 
     return res.status(200).send({
       message: "Login successful",
@@ -62,6 +64,7 @@ const login = async (req, res) => {
         role: userInfo[0].role,
         phone: userInfo[0].phone,
       },
+      token: token
     });
   } catch (err) {
     console.error("Login Error:", err);

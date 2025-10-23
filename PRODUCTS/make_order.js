@@ -3,7 +3,7 @@ const sureToken = require('../middelware/sure_token');
 const multer = require('../middelware/multer');
 const cloudinary = require('../Data/cloudinary');
 const { Readable } = require('stream');
-const { sendWhatsAppMessage } = require('./whatsapp');
+// const { sendWhatsAppMessage } = require('./whatsapp');
 const nodemailer = require("nodemailer");
 
 

@@ -48,9 +48,14 @@ router.get('/admin/orders/userEmail',middelware.sureToken,middelware.verifyRole,
 router.get('/isLoggedIn',middelware.sureToken,admin.isLoggedIn);
 
 router.post('/logout', middelware.sureToken, (req, res) => {
-    res.clearCookie('token');
-    res.status(200).json({ message: "Logged out successfully" });
+  res.clearCookie('token', {
+    httpOnly: true,
+    sameSite: "None",    
+    secure: true,        
   });
+  res.status(200).json({ message: "Logged out successfully" });
+});
+
 
 
 module.exports = router;
