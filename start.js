@@ -5,19 +5,14 @@ const dotenv = require('dotenv');
 const router = require('./router');
 const cookieParser = require("cookie-parser");
 const helmet = require("helmet");
-const rateLimit = require("express-rate-limit");
 
 dotenv.config();
 app.use(express.json());
 app.use(cookieParser());
 app.use(helmet());
 
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  message: "Too many requests, please try again later."
-});
-app.use(limiter);
+
+
 
 app.use(cors({
   origin: "https://front-clothing-store.vercel.app",

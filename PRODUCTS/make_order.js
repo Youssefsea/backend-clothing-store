@@ -375,8 +375,21 @@ const confirmPayment = async (req, res) => {
 
     
     const message = `📦 طلب جديد\n👤 العميل: ${user.name}\n📞 رقم الهاتف: ${user.phone}\n💰 الإجمالي: ${total} جنيه\n💳 طريقة الدفع: ${payment_method}\n📍 العنوان: ${address}\n🛒 المنتجات:\n${itemList}\n📸 صورة الدفع: ${payment_screenshot}`;
+const message2 = `
+<h2>مرحباً ${user.name}!</h2>
+<p>شكراً لإتمام طلبك معنا. لقد استلمنا صورة الدفع الخاصة بك، وسيتم التحقق منها أولاً.</p>
+<p>إذا كانت صورة الدفع صحيحة، سيقوم فريقنا بالتواصل معك قبل موعد وصول الشحنة لتأكيد كل التفاصيل.</p>
+<ul>
+  <li>💰 <b>الإجمالي:</b> ${total} جنيه</li>
+  <li>💳 <b>طريقة الدفع:</b> ${payment_method}</li>
+  <li>📍 <b>العنوان:</b> ${address}</li>
+</ul>
+<p><b>🛒 المنتجات:</b><br>${itemList.replace(/\n/g, '<br>')}</p>
+<p>شكراً لتسوقك معنا! نتطلع لخدمتك بأفضل شكل ممكن ❤️</p>
+`;
 
-    // ======== إعداد Nodemailer مع Ethereal ========
+
+
     let transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
@@ -392,7 +405,15 @@ const confirmPayment = async (req, res) => {
       text: message
     });
 
+    let info2= await transporter.sendMail({
+      from: '"My Shop" <shop@example.com>',
+      to: `${user.email}`, // ممكن تحط أي بريد لتجربة
+      subject: "تأكيد الطلب الجديد",
+      text: message2
+    });
+
     console.log("Preview URL:", nodemailer.getTestMessageUrl(info));
+    console.log("Preview URL:", nodemailer.getTestMessageUrl(info2));
 
 
 

@@ -43,9 +43,7 @@ const updateOrderStatus = async (req, res) => {
   
       const oldStatus = currentOrder[0].status;
   
-      // 2️⃣ لو الحالة الجديدة هي "cancelled" والقديمة مش "cancelled"
       if (status === 'cancelled' && oldStatus !== 'cancelled') {
-        // رجع المنتجات إلى الـ stock
         const [items] = await data.query('SELECT product_id, quantity FROM order_items WHERE order_id = ?', [order_id]);
   
         for (const item of items) {
