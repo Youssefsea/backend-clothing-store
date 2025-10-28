@@ -320,7 +320,6 @@ const confirmPayment = async (req, res) => {
 
     if (items.length === 0) return res.status(400).send({ message: "No items in cart" });
 
-    // ===== حساب الإجمالي والتحقق من الكمية =====
     let total = 0;
     let itemList = "";
 
@@ -337,7 +336,6 @@ const confirmPayment = async (req, res) => {
       itemList += `- ${item.title} (Size: ${item.size}, Color: ${item.color}) × ${item.quantity} = ${subtotal} جنيه\n`;
     }
 
-    // ===== إنشاء الطلب في جدول orders =====
     const [orderResult] = await data.query(
       `INSERT INTO orders 
        (user_id, customer_name, customer_email, customer_phone, address, payment_method, payment_screenshot, total, status)
@@ -347,7 +345,6 @@ const confirmPayment = async (req, res) => {
 
     const order_id = orderResult.insertId;
 
-    // ===== إدخال order_items وتحديث مخزون المنتجات =====
     for (let item of items) {
       const discountAmount = (item.price * (item.discount || 0)) / 100;
       const finalPrice = Number(item.price) - discountAmount;
@@ -358,18 +355,14 @@ const confirmPayment = async (req, res) => {
         [order_id, item.product_id, item.quantity, finalPrice]
       );
 
-      // حدث المخزون في جدول products
       await data.query(`UPDATE products SET stock = stock - ? WHERE id = ?`, [item.quantity, item.product_id]);
     }
 
-    // ===== تنظيف السلة بعد الطلب =====
-    // إذا استخدمنا cart_items نحذف منها ثم نحذف cart
     const [checkCartItemsAgain] = await data.query('SELECT COUNT(*) AS cnt FROM cart_items WHERE cart_id = ?', [cart_id]);
     if (checkCartItemsAgain[0].cnt > 0) {
       await data.query("DELETE FROM cart_items WHERE cart_id = ?", [cart_id]);
       await data.query("DELETE FROM cart WHERE id = ?", [cart_id]);
     } else {
-      // وإلا نحذف صفوف cart المرتبطة باليوزر
       await data.query("DELETE FROM cart WHERE user_id = ?", [user.id]);
     }
 

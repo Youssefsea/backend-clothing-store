@@ -16,7 +16,7 @@ async function sendEmail(to, subject, text, html) {
       to,
       subject,
       text,
-      html
+      
     });
 
     console.log("✅ Email sent!");

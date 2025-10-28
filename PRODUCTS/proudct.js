@@ -86,7 +86,6 @@ const addProduct = async (req, res) => {
       imageUrls.push(uploadResult.secure_url);
     }
 
-    // نحول اللينكات لفورمات نصي مفصول بفواصل
     const image_url = imageUrls.join(",");
 
     await data.query(

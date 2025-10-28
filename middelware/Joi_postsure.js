@@ -5,6 +5,7 @@ const signupSchema = Joi.object({
   email: Joi.string().email().required(),
   password: Joi.string().min(6).max(50).required(),
   phone: Joi.string().pattern(/^[0-9]{10,15}$/).required(),
+  otp: Joi.string().length(6).pattern(/^[0-9]{6}$/).required(),
 });
 
 const loginSchema = Joi.object({

@@ -16,6 +16,7 @@ const limiter = rateLimit({
 
 
 router.post('/signup',limiter,middelware.validate(schemas.signupSchema),auth.signup);
+router.post('/send-otp',limiter,auth.sendOTPEmail);
 router.post('/login',limiter,middelware.validate(schemas.loginSchema),auth.login);
 
 router.get('/products',products.getAllProducts );

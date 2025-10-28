@@ -1,19 +1,58 @@
 const data = require("../Data/data");
 const bcrypt = require("bcryptjs");
 const { createToken } = require("../middelware/jwt_making");
+const crypto = require('crypto');
+const NodeCache = require("node-cache");
+const {sendEmail}=require('./OTPemail');
 
-const signup = async (req, res) => {
-  try {
-    const { name, email, password, phone } = req.body;
-
-    const EmailOrPhoneFound = "SELECT id FROM users WHERE email = ? OR phone = ?";
-    const [existing] = await data.query(EmailOrPhoneFound, [email, phone]);
-
+const otpCache = new NodeCache({ stdTTL: 60, checkperiod: 10 });
+const sendOTPEmail = async(req,res)=>
+  {
+    try{
+const {email,phone}=req.body;
+    const [existing] = await data.query(
+      "SELECT id FROM users WHERE email = ? OR phone = ?",
+      [email, phone]
+    );
     if (existing.length > 0) {
       return res.status(409).send({ message: "Email or phone already exists" });
     }
+        const otp = crypto.randomInt(100000, 999999).toString();
+    otpCache.set(email, otp);
+        await sendEmail(email, otp);
+ console.log(`OTP for ${email}: ${otp}`);
+  return res.status(200).send({ message: "OTP sent to your email" });
+  } catch(err){
+    console.error("Error in sendOTPEmail:", err);
+    return res.status(500).send({ message: "Server error" });
+  }
+};
+
+
+const signup = async (req, res) => {
+  try {
+    const { name, email, password, phone,otp } = req.body;
+    const storedOtp = otpCache.get(email);
+    // const EmailOrPhoneFound = "SELECT id FROM users WHERE email = ? OR phone = ?";
+    // const [existing] = await data.query(EmailOrPhoneFound, [email, phone]);
+
+    // if (existing.length > 0) {
+    //   return res.status(409).send({ message: "Email or phone already exists" });
+    // }
+
+if (!storedOtp || storedOtp !== otp) {
+  return res.status(400).send({ message: "Invalid or expired OTP" });
+}
+
+      otpCache.del(email);
+
+
+
+
 
     const hashedPassword = await bcrypt.hash(password, 12);
+
+
 
     await data.query(
       "INSERT INTO users (name, email, password, phone) VALUES (?, ?, ?, ?)",
@@ -74,4 +113,4 @@ res.cookie("token", token, {
 
 
 
-module.exports = { login, signup };
+module.exports = { login, signup, sendOTPEmail };
