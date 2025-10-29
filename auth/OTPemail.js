@@ -7,8 +7,8 @@ async function sendEmail(to, OTP) {
  let transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
-        user: "yassefsea274@gmail.com", // بريدك الحقيقي
-        pass: "vyobfqfeuiiepivu"       // استخدم App Password بدون فراغات
+        user: "yassefsea274@gmail.com", 
+        pass: "vyobfqfeuiiepivu"       
       }
     });
 
@@ -16,8 +16,8 @@ async function sendEmail(to, OTP) {
       from: '"My Shop" <yassefsea274@gmail.com>',
       to,
       subject: "Email Verification",
-      text: `Your verification code is: ${OTP}`,
-     
+      text: `your OTP is: ${OTP}`,
+
     });
     console.log("Email sent:", info.messageId);
   } catch (error) {
