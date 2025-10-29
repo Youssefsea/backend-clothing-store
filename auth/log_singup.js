@@ -33,12 +33,7 @@ const signup = async (req, res) => {
   try {
     const { name, email, password, phone,otp } = req.body;
     const storedOtp = otpCache.get(email);
-    // const EmailOrPhoneFound = "SELECT id FROM users WHERE email = ? OR phone = ?";
-    // const [existing] = await data.query(EmailOrPhoneFound, [email, phone]);
 
-    // if (existing.length > 0) {
-    //   return res.status(409).send({ message: "Email or phone already exists" });
-    // }
 
 if (!storedOtp || storedOtp !== otp) {
   return res.status(400).send({ message: "Invalid or expired OTP" });
@@ -88,8 +83,8 @@ const login = async (req, res) => {
     
 res.cookie("token", token, {
   httpOnly: true,
-  sameSite: "None", // <--- ضروري عشان cross-site
-  secure: true, // <--- لازم لما تستخدم SameSite=None
+  sameSite: "None", 
+  secure: true, 
   maxAge: 2 * 60 * 60 * 1000
 });
 
