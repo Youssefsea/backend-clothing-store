@@ -283,8 +283,6 @@ const confirmPayment = async (req, res) => {
         stock: Number(r.stock) || 0
       }));
     } else {
-      // fallback: بعض المشاريع تخزن المنتجات في جدول cart مباشرة
-      // نجلب كل الصفوف من جدول cart التي لها user_id (كل صف يمثل عنصر)
       const [cartDirectRows] = await data.query(
         `SELECT product_id, quantity FROM cart WHERE user_id = ?`,
         [user.id]
@@ -294,15 +292,12 @@ const confirmPayment = async (req, res) => {
         return res.status(404).send({ message: "Cart is empty" });
       }
 
-      // الآن نحتاج تفاصيل المنتجات من table products
       const productIds = cartDirectRows.map(r => r.product_id);
-      // احصل على تفاصيل كل المنتجات في استعلام واحد
       const [productsInfo] = await data.query(
         `SELECT id, title, price, discount, stock FROM products WHERE id IN (${productIds.map(() => '?').join(',')})`,
         productIds
       );
 
-      // دمج المعلومات
       items = cartDirectRows.map(row => {
         const p = productsInfo.find(pi => pi.id === row.product_id) || {};
         return {
@@ -402,7 +397,7 @@ const message2 = `
       from: '"My Shop" <shop@example.com>',
       to: `${user.email}`, // ممكن تحط أي بريد لتجربة
       subject: "تأكيد الطلب الجديد",
-      text: message2
+      html: message2
     });
 
     console.log("Preview URL:", nodemailer.getTestMessageUrl(info));
