@@ -15,7 +15,7 @@ app.use(helmet());
 
 
 app.use(cors({
-  origin: ["https://front-clothing-store.vercel.app","http://localhost:3000"],
+  origin: ["https://front-clothing-store.vercel.app","https://admin-dashboard-clothing-pi.vercel.app"],
   optionsSuccessStatus: 200,
   methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
   allowedHeaders: "Content-Type,Authorization",
