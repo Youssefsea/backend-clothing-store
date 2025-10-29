@@ -14,7 +14,7 @@ if(products.length===0){return res.status(404).send({message:'No products found'
 cache.set('allProducts',products);
 return res.status(200).send({message:'All Products',allProducts:products});
 }
-catch(err){return res.status(500).send({message:'Server error'})};
+catch(err){return res.status(500).send({message:err.message})};
 }
 
 const getProudctByName=async(req,res)=>{
