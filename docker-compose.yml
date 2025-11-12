@@ -1,0 +1,25 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    container_name: node_app
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/usr/src/app
+    working_dir: /usr/src/app
+    command: npm start
+    environment:
+      NODE_ENV: development
+
+  ngrok:
+    build: ./ngrok
+    container_name: ngrok_tunnel
+    depends_on:
+      - app
+    environment:
+      NGROK_AUTHTOKEN: 35Hp32xFLkqQG1Gorx5mb2CkiVZ_85ixbuEj3SHw6btremoVs
+    volumes:
+      - ./ngrok/ngrok-start.sh:/ngrok-start.sh
+    entrypoint: ["/bin/sh", "/ngrok-start.sh"]

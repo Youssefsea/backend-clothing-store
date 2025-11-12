@@ -9,7 +9,7 @@ const getAllProducts=async(req,res)=>{
 {
 const c=cache.get('allProducts');
 if(c){return res.status(200).send({message:'All Products',allProducts:c})}
-const [products]=await data.query('SELECT * FROM products WHERE is_active=1');
+const [products]=await data.query('SELECT * FROM products WHERE is_active=true');
 if(products.length===0){return res.status(404).send({message:'No products found'})}
 cache.set('allProducts',products);
 return res.status(200).send({message:'All Products',allProducts:products});
@@ -24,7 +24,7 @@ const {title}=req.body;
 const u=`product_${title}`;
 const c=cache.get(u);
 if(c){return res.status(200).send({message:'Product found',product:c})}
-const [product]=await data.query('SELECT * FROM products WHERE title=? AND is_active=1',[title]);
+const [product]=await data.query('SELECT * FROM products WHERE title=? AND is_active=true',[title]);
 if(product.length===0){return res.status(404).send({message:'Product not found'})}
 cache.set(u,product)
 return res.status(200).send({message:'Product found',product:product})
@@ -38,7 +38,7 @@ const {category_name}=req.body;
 const u=`cate_${category_name}`;
 const c=cache.get(u);
 if(c){return res.status(200).send({message:'Products found',products:c})}
-const [productsByCate]=await data.query('SELECT * FROM products WHERE category_name=? AND is_active=1',[category_name]);
+const [productsByCate]=await data.query('SELECT * FROM products WHERE category_name=? AND is_active=true',[category_name]);
 if(productsByCate.length===0){return res.status(404).send({message:'No products found in this category'})}
 cache.set(u,productsByCate)
 return res.status(200).send({message:'Products found',products:productsByCate});
@@ -53,7 +53,7 @@ const {minPrice,maxPrice}=req.body;
 const u=`range_${minPrice}_${maxPrice}`;
 const c=cache.get(u);
 if(c){return res.status(200).send({message:'Products found',products:c})}
-const [productsRange]=await data.query('SELECT * FROM products WHERE price BETWEEN ? AND ? AND is_active=1',[minPrice,maxPrice]);
+const [productsRange]=await data.query('SELECT * FROM products WHERE price BETWEEN ? AND ? AND is_active=true',[minPrice,maxPrice]);
 if(productsRange.length===0)return res.status(404).send({message:'No products found in this price range'})
 cache.set(u,productsRange)
 return res.status(200).send({message:'Products found',products:productsRange});
@@ -130,7 +130,6 @@ const updateProduct = async (req, res) => {
 
     let finalImageUrl = image_url || null;
 
-    // رفع صورة جديدة إذا موجودة
     if (req.file && req.file.buffer) {
       const uploadPromise = new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
@@ -144,14 +143,12 @@ const updateProduct = async (req, res) => {
       });
       finalImageUrl = await uploadPromise;
     } else if (image_url && image_url !== '0' && image_url !== 0) {
-      // تنظيف الرابط من أي فواصل أو مسافات في البداية
       finalImageUrl = image_url.toString().trim().replace(/^,+/, '');
     }
 
     const updateFields = [];
     const updateValues = [];
 
-    // الحقول الأساسية
     updateFields.push(
       'title = ?',
       'description = ?',
@@ -170,32 +167,27 @@ const updateProduct = async (req, res) => {
       Number(stock) || 0
     );
 
-    // الصورة
     if (finalImageUrl) {
       updateFields.push('image_url = ?');
       updateValues.push(finalImageUrl);
     }
 
-    // الأحجام
     if (sizes) {
       updateFields.push('sizes = ?');
       updateValues.push(Array.isArray(sizes) ? sizes.join(',') : String(sizes));
     }
 
-    // الألوان
     if (colors) {
       updateFields.push('colors = ?');
       updateValues.push(Array.isArray(colors) ? colors.join(',') : String(colors));
     }
 
-    // حالة النشاط
     if (is_active !== undefined) {
       updateFields.push('is_active = ?');
-      updateValues.push(Number(is_active));
+      updateValues.push(is_active);
     }
 
-    // إضافة الـ id في نهاية القيم
-    updateValues.push(Number(id));
+    updateValues.push(id);
 
     const [result] = await data.query(
       `UPDATE products SET ${updateFields.join(', ')} WHERE id = ?`,
@@ -226,8 +218,8 @@ const UnActtiveActtiveProduct=async(req,res)=>{
   
   if(product.length===0){return res.status(404).send({message:'Product not found'})}
   
-  const newStatus=product[0].is_active?0:1;
-  
+  const newStatus=product[0].is_active?false:true;
+
   await data.query('UPDATE products SET is_active=? WHERE id=?',[newStatus,id]);
   cache.flushAll()
   return res.status(200).send({message:`Product ${newStatus?'activated':'deactivated'} successfully`});

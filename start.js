@@ -9,16 +9,18 @@ const helmet = require("helmet");
 dotenv.config();
 app.use(express.json());
 app.use(cookieParser());
-app.use(helmet());
-
-
-
-
+app.use(
+  helmet({
+    crossOriginResourcePolicy: false,
+    crossOriginEmbedderPolicy: false,
+  })
+);
 
 const allowedOrigins = [
   "https://front-clothing-store.vercel.app",
   "https://admin-dashboard-clothing-pi.vercel.app"
 ];
+
 
 app.use(
   cors({
@@ -39,6 +41,7 @@ app.use(
     preflightContinue: false,
     optionsSuccessStatus: 200
   })
+
 );
 
 app.use('/', router);
