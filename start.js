@@ -21,27 +21,29 @@ const allowedOrigins = [
   "https://admin-dashboard-clothing-pi.vercel.app"
 ];
 
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Credentials", "true");
+  next();
+});
 
 app.use(
   cors({
     origin: function (origin, callback) {
-
       if (!origin) return callback(null, true);
 
-      if (allowedOrigins.indexOf(origin) !== -1) {
-        callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
       } else {
-        callback(new Error("Not allowed by CORS"));
+        return callback(new Error("Not allowed by CORS"));
       }
     },
     credentials: true,
     methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Origin", "X-Requested-With", "Content-Type", "Accept", "Authorization"],
-    exposedHeaders: ["Content-Length", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    exposedHeaders: ["Authorization"],
     preflightContinue: false,
     optionsSuccessStatus: 200
   })
-
 );
 
 app.use('/', router);
@@ -50,5 +52,6 @@ app.use((err, req, res, next) => {
   console.error("Server Error:", err.message);
   res.status(500).json({ message: "Internal Server Error" });
 });
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

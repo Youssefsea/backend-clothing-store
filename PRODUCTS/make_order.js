@@ -20,7 +20,7 @@ const addToCart = async (req, res) => {
     if (!color) return res.status(400).send({ message: 'Color is required' });
 
     const [products] = await data.query('SELECT id, stock, is_active FROM products WHERE id = ?', [product_id]);
-    if (products.length === 0 || !products[0].is_active) return res.status(404).send({ message: 'Product not found' });
+    if (products.length === 0 || products[0].is_active === false) return res.status(404).send({ message: 'Product not found' });
     if (products[0].stock < quantity) return res.status(400).send({ message: 'Not enough stock' });
 
     const [carts] = await data.query('SELECT id FROM cart WHERE user_id = ?', [user.id]);
@@ -177,7 +177,7 @@ const updateCartItem = async (req, res) => {
     if (!color) return res.status(400).send({ message: "Color is required" });
 
     const [product] = await data.query('SELECT id, stock, is_active FROM products WHERE id = ?', [product_id]);
-    if (product.length === 0 || !product[0].is_active) return res.status(404).send({ message: 'Product not found' });
+    if (product.length === 0 || product[0].is_active===false) return res.status(404).send({ message: 'Product not found' });
 
     let [cart] = await data.query('SELECT id FROM cart WHERE user_id = ?', [user.id]);
     let cart_id;

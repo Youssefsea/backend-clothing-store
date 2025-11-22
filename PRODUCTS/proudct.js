@@ -90,7 +90,7 @@ const addProduct = async (req, res) => {
 
     await data.query(
       `INSERT INTO products (title, description, price, discount, stock, image_url, category_name, sizes, colors, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, true)`,
       [title, description, price, discount, stock, image_url, category_name, sizes, colors]
     );
 

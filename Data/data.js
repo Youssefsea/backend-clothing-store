@@ -22,4 +22,26 @@ pool.connect()
     console.error('Database failed:', err.message);
   });
 
-module.exports = pool;
+// Helper function to convert MySQL-style ? placeholders to PostgreSQL $1, $2, ...
+function convertPlaceholders(query, values) {
+  let idx = 0;
+  return query.replace(/\?/g, () => {
+    idx++;
+    return `$${idx}`;
+  });
+}
+
+// Unified query function to mimic MySQL2's [rows] return
+async function query(sql, params = []) {
+  const text = convertPlaceholders(sql, params);
+  const client = await pool.connect();
+  try {
+    const result = await client.query(text, params);
+    // Return [rows] to match MySQL2's destructuring
+    return [result.rows, result];
+  } finally {
+    client.release();
+  }
+}
+
+module.exports = { query };
