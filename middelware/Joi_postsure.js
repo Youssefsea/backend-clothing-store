@@ -45,7 +45,7 @@ const addProductSchema = Joi.object({
 // });
 
 const addToCartSchema = Joi.object({
- 
+ product_id: Joi.number().integer().required(),
   quantity: Joi.number().integer().min(1).required(),
   size: Joi.string().valid('S', 'M', 'L', 'XL', 'XXL','XS','XXXL').required(),
   color: Joi.string().required(),
