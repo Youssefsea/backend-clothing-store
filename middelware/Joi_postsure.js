@@ -45,7 +45,7 @@ const addProductSchema = Joi.object({
 // });
 
 const addToCartSchema = Joi.object({
- product_id: Joi.number().integer().required(),
+product_id: Joi.number().integer().required(),
   quantity: Joi.number().integer().min(1).required(),
   size: Joi.string().valid('S', 'M', 'L', 'XL', 'XXL','XS','XXXL').required(),
   color: Joi.string().required(),
@@ -53,6 +53,13 @@ const addToCartSchema = Joi.object({
 
 const delFromCartSchema = Joi.object({
   product_id: Joi.number().integer().required(),
+});
+
+const updateCartItemSchema = Joi.object({
+  product_id: Joi.number().integer().required(),
+  delta: Joi.number().integer().required(),
+  size: Joi.string().valid('S', 'M', 'L', 'XL', 'XXL','XS','XXXL').required(),
+  color: Joi.string().required(),
 });
 
 const confirmPaymentSchema = Joi.object({
@@ -68,5 +75,6 @@ module.exports = {
   
   addToCartSchema,
   delFromCartSchema,
+  updateCartItemSchema,
   confirmPaymentSchema,
 };
