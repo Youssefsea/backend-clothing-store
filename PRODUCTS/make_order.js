@@ -118,7 +118,7 @@ const getCart = async (req, res) => {
       const discountAmount = (item.product_price * item.product_discount) / 100;
       const finalPrice = item.product_price - discountAmount;
       const subtotal = finalPrice * item.cart_quantity;
-      if (item.product_active && item.product_stock > 0) {
+      if (item.product_active === true && item.product_stock > 0) {
         total += subtotal;
       }
 
@@ -134,7 +134,7 @@ const getCart = async (req, res) => {
         size: item.product_size,
         color: item.product_color,
         image: item.product_image,
-        available: item.product_active && item.product_stock > 0
+        available: item.product_active === true && item.product_stock > 0
       };
     });
 
@@ -240,7 +240,6 @@ const confirmPayment = async (req, res) => {
     if (!file)
       return res.status(400).send({ message: "Payment screenshot is required" });
 
-    // رفع الصورة على Cloudinary
     const uploadResult = await new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
         { folder: "payment_screenshots" },
@@ -250,16 +249,12 @@ const confirmPayment = async (req, res) => {
     });
     const payment_screenshot = uploadResult.secure_url;
 
-    // ===== جلب بيانات السلة =====
-    // نحاول نلاقي cart مرتبط بالمستخدم
     const [cartRows] = await data.query("SELECT id FROM cart WHERE user_id = ?", [user.id]);
 
     if (!cartRows || cartRows.length === 0) {
-      // لا يوجد سلة على الإطلاق
       return res.status(404).send({ message: "Cart is empty" });
     }
 
-    // نحاول استخدام cart_items أولاً (الأسلوب المفضل)
     const cart_id = cartRows[0].id;
     const [cartItemsRows] = await data.query(
       `SELECT ci.product_id, ci.quantity, ci.size, ci.color, p.title, p.price, p.discount, p.stock
@@ -271,7 +266,6 @@ const confirmPayment = async (req, res) => {
 
     let items = [];
     if (cartItemsRows && cartItemsRows.length > 0) {
-      // استخدم البيانات من cart_items
       items = cartItemsRows.map(r => ({
         product_id: r.product_id,
         quantity: r.quantity,
