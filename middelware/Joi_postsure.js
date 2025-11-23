@@ -55,13 +55,6 @@ const delFromCartSchema = Joi.object({
   product_id: Joi.number().integer().required(),
 });
 
-const updateCartItemSchema = Joi.object({
-  product_id: Joi.number().integer().required(),
-  delta: Joi.number().integer().required(),
-  size: Joi.string().valid('S', 'M', 'L', 'XL', 'XXL','XS','XXXL').required(),
-  color: Joi.string().required(),
-});
-
 const confirmPaymentSchema = Joi.object({
   payment_method: Joi.string().valid('vodafone_cash', 'instapay').required(),
   address: Joi.string().min(10).max(300).required(),
@@ -72,9 +65,7 @@ module.exports = {
   signupSchema,
   loginSchema,
   addProductSchema,
-  
   addToCartSchema,
   delFromCartSchema,
-  updateCartItemSchema,
   confirmPaymentSchema,
 };
