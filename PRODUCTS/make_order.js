@@ -387,8 +387,6 @@ const confirmPayment = async (req, res) => {
       console.log("✅ تم إرسال الإيميلات بنجاح");
     } catch (emailError) {
       console.error("❌ خطأ في إرسال الإيميل:", emailError.message);
-      
-     d
       emailSuccess = false;
     }
 
