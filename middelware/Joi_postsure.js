@@ -40,10 +40,6 @@ const addProductSchema = Joi.object({
 });
 
 
-// const updateProductSchema = addProductSchema.keys({
-//   id: Joi.number().integer().required(),
-// });
-
 const addToCartSchema = Joi.object({
 product_id: Joi.number().integer().required(),
   quantity: Joi.number().integer().min(1).required(),

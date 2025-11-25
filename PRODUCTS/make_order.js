@@ -3,7 +3,6 @@ const sureToken = require('../middelware/sure_token');
 const multer = require('../middelware/multer');
 const cloudinary = require('../Data/cloudinary');
 const { Readable } = require('stream');
-// const { sendWhatsAppMessage } = require('./whatsapp');
 const nodemailer = require("nodemailer");
 
 
@@ -42,11 +41,8 @@ const addToCart = async (req, res) => {
     await data.query(
       'INSERT INTO cart_items (cart_id, product_id, quantity, size, color) VALUES (?, ?, ?, ?, ?)',
       [cart_id, product_id, quantity, size, color]
-    );
-
-    return res.status(201).send({ message: 'Product added to cart successfully', cart_id });
+    );    return res.status(201).send({ message: 'Product added to cart successfully', cart_id });
   } catch (err) {
-    console.log(err);
     return res.status(500).send({ message: 'Server error' });
   }
 };
@@ -287,9 +283,8 @@ const confirmPayment = async (req, res) => {
         const p = productsInfo.find(pi => pi.id === row.product_id) || {};
         return {
           product_id: row.product_id,
-          quantity: row.quantity,
-          size: "-", // غير متوفر في هذه البنية
-          color: "-", // غير متوفر
+          quantity: row.quantity,          size: "-",
+          color: "-",
           title: p.title || "Unknown product",
           price: Number(p.price) || 0,
           discount: Number(p.discount) || 0,
@@ -331,22 +326,11 @@ const confirmPayment = async (req, res) => {
         `INSERT INTO order_items (order_id, product_id, quantity, price)
          VALUES (?, ?, ?, ?)`,
         [order_id, item.product_id, item.quantity, finalPrice]
-      );
+      );      await data.query(`UPDATE products SET stock = stock - ? WHERE id = ?`, [item.quantity, item.product_id]);    }
 
-      await data.query(`UPDATE products SET stock = stock - ? WHERE id = ?`, [item.quantity, item.product_id]);
-    }
-
-    const [checkCartItemsAgain] = await data.query('SELECT COUNT(*) AS cnt FROM cart_items WHERE cart_id = ?', [cart_id]);
-    if (checkCartItemsAgain[0].cnt > 0) {
-      await data.query("DELETE FROM cart_items WHERE cart_id = ?", [cart_id]);
-      await data.query("DELETE FROM cart WHERE id = ?", [cart_id]);
-    } else {
-      await data.query("DELETE FROM cart WHERE user_id = ?", [user.id]);
-    }
-
-    
     const message = `📦 طلب جديد\n👤 العميل: ${user.name}\n📞 رقم الهاتف: ${user.phone}\n💰 الإجمالي: ${total} جنيه\n💳 طريقة الدفع: ${payment_method}\n📍 العنوان: ${address}\n🛒 المنتجات:\n${itemList}\n📸 صورة الدفع: ${payment_screenshot}`;
-const message2 = `
+    
+    const message2 = `
 <h2>مرحباً ${user.name}!</h2>
 <p>شكراً لإتمام طلبك معنا. لقد استلمنا صورة الدفع الخاصة بك، وسيتم التحقق منها أولاً.</p>
 <p>إذا كانت صورة الدفع صحيحة، سيقوم فريقنا بالتواصل معك قبل موعد وصول الشحنة لتأكيد كل التفاصيل.</p>
@@ -359,35 +343,39 @@ const message2 = `
 <p>شكراً لتسوقك معنا! نتطلع لخدمتك بأفضل شكل ممكن ❤️</p>
 `;
 
+    try {
+      let transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: "yassefsea274@gmail.com",
+          pass: "vyobfqfeuiiepivu"
+        }      });
 
+      await transporter.sendMail({
+        from: '"My Shop" <shop@example.com>',
+        to: "yassefsea111@gmail.com",
+        subject: "تأكيد الطلب الجديد",
+        text: message      });
 
-    let transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: "yassefsea274@gmail.com", // بريدك الحقيقي
-        pass: "vyobfqfeuiiepivu"       // استخدم App Password بدون فراغات
-      }
-    });
+      await transporter.sendMail({
+        from: '"My Shop" <shop@example.com>',
+        to: `${user.email}`,
+        subject: "تأكيد الطلب الجديد",
+        html: message2
+      });
 
-    let info = await transporter.sendMail({
-      from: '"My Shop" <shop@example.com>',
-      to: "yassefsea111@gmail.com", // ممكن تحط أي بريد لتجربة
-      subject: "تأكيد الطلب الجديد",
-      text: message
-    });
+      console.log("✅ تم إرسال الإيميلات بنجاح");
+    } catch (emailError) {
+      console.error("❌ خطأ في إرسال الإيميل:", emailError);
+    }
 
-    let info2= await transporter.sendMail({
-      from: '"My Shop" <shop@example.com>',
-      to: `${user.email}`, // ممكن تحط أي بريد لتجربة
-      subject: "تأكيد الطلب الجديد",
-      html: message2
-    });
-
-    console.log("Preview URL:", nodemailer.getTestMessageUrl(info));
-    console.log("Preview URL:", nodemailer.getTestMessageUrl(info2));
-
-
-
+    const [checkCartItemsAgain] = await data.query('SELECT COUNT(*) AS cnt FROM cart_items WHERE cart_id = ?', [cart_id]);
+    if (checkCartItemsAgain[0].cnt > 0) {
+      await data.query("DELETE FROM cart_items WHERE cart_id = ?", [cart_id]);
+      await data.query("DELETE FROM cart WHERE id = ?", [cart_id]);
+    } else {
+      await data.query("DELETE FROM cart WHERE user_id = ?", [user.id]);
+    }
 
     return res.status(200).send({
       message: "Payment confirmed successfully",

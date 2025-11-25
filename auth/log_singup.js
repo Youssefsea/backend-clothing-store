@@ -16,11 +16,9 @@ const {email,phone}=req.body;
     );
     if (existing.length > 0) {
       return res.status(409).send({ message: "Email or phone already exists" });
-    }
-        const otp = crypto.randomInt(100000, 999999).toString();
+    }        const otp = crypto.randomInt(100000, 999999).toString();
     otpCache.set(email, otp);
         await sendEmail(email, otp);
- console.log(`OTP for ${email}: ${otp}`);
   return res.status(200).send({ message: "OTP sent to your email" });
   } catch(err){
     console.error("Error in sendOTPEmail:", err);

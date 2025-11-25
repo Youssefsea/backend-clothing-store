@@ -6,11 +6,8 @@ const sureToken = (req, res, next) => {
 
     if (!token) {
       return res.status(401).send({ message: 'No token provided' });
-    }
-
-    const user = jwt.verify(token, process.env.JWT_SECRET);
+    }    const user = jwt.verify(token, process.env.JWT_SECRET);
     req.user = user;
-    console.log("sure",req.user.role);
    
     next();
   } catch (err) {
@@ -33,7 +30,6 @@ const validate = (schema) => (req, res, next) => {
 
 const verifyRole=(req,res,next)=>{
   const user=req.user;
-  console.log(user.role);
   if(user.role!=='admin'){
     return res.status(403).send({message:'Unauthorized'});
   }
