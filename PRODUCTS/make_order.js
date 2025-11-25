@@ -16,32 +16,34 @@ const addToCart = async (req, res) => {
 
     if (quantity <= 0) return res.status(400).send({ message: 'Quantity must be greater than 0' });
     if (!size) return res.status(400).send({ message: 'Size is required' });
-    if (!color) return res.status(400).send({ message: 'Color is required' });    const [products] = await data.query('SELECT id, stock, is_active FROM products WHERE id = ?', [product_id]);
-    if (products.length === 0 || products[0].is_active === false) return res.status(404).send({ message: 'Product not found' });
-    if (products[0].stock < quantity) return res.status(400).send({ message: 'Not enough stock' });    const [carts] = await data.query('SELECT id FROM cart WHERE user_id = ?', [user.id]);
+    if (!color) return res.status(400).send({ message: 'Color is required' });    const productsQuery = await data.query('SELECT id, stock, is_active FROM products WHERE id = $1', [product_id]);
+    if (productsQuery.rows.length === 0 || productsQuery.rows[0].is_active === false) return res.status(404).send({ message: 'Product not found' });
+    if (productsQuery.rows[0].stock < quantity) return res.status(400).send({ message: 'Not enough stock' });
+
+    const cartsQuery = await data.query('SELECT id FROM cart WHERE user_id = $1', [user.id]);
     let cart_id;
-    if (carts.length === 0) {
-      const [newCart] = await data.query('INSERT INTO cart (user_id,product_id,quantity) VALUES (?,?,?) RETURNING id', [user.id,product_id,quantity]);
-      cart_id = newCart[0].id;
+    if (cartsQuery.rows.length === 0) {
+      const newCartQuery = await data.query('INSERT INTO cart (user_id,product_id,quantity) VALUES ($1,$2,$3) RETURNING id', [user.id,product_id,quantity]);
+      cart_id = newCartQuery.rows[0].id;
     } else {
-      cart_id = carts[0].id;
+      cart_id = cartsQuery.rows[0].id;
     }
 
-    const [existingItems] = await data.query(
-      'SELECT id, quantity FROM cart_items WHERE cart_id = ? AND product_id = ? AND size = ? AND color = ?',
+    const existingItemsQuery = await data.query(
+      'SELECT id, quantity FROM cart_items WHERE cart_id = $1 AND product_id = $2 AND size = $3 AND color = $4',
       [cart_id, product_id, size, color]
     );
 
-    if (existingItems.length > 0) {
-      const newQuantity = existingItems[0].quantity + quantity;
-      await data.query('UPDATE cart_items SET quantity = ? WHERE id = ?', [newQuantity, existingItems[0].id]);
+    if (existingItemsQuery.rows.length > 0) {
+      const newQuantity = existingItemsQuery.rows[0].quantity + quantity;
+      await data.query('UPDATE cart_items SET quantity = $1 WHERE id = $2', [newQuantity, existingItemsQuery.rows[0].id]);
       return res.status(200).send({ message: 'Product quantity updated in cart', cart_id });
     }
 
     await data.query(
-      'INSERT INTO cart_items (cart_id, product_id, quantity, size, color) VALUES (?, ?, ?, ?, ?)',
+      'INSERT INTO cart_items (cart_id, product_id, quantity, size, color) VALUES ($1, $2, $3, $4, $5)',
       [cart_id, product_id, quantity, size, color]
-    );    return res.status(201).send({ message: 'Product added to cart successfully', cart_id });
+    );return res.status(201).send({ message: 'Product added to cart successfully', cart_id });
   } catch (err) {
     return res.status(500).send({ message: 'Server error' });
   }
@@ -54,16 +56,16 @@ const delFromCart = async (req, res) => {
     const { product_id } = req.body;
     if (!product_id) return res.status(400).send({ message: 'Product ID required' });
 
-    const [cart] = await data.query('SELECT id FROM cart WHERE user_id = ?', [user.id]);
-    if (cart.length === 0) return res.status(404).send({ message: 'Cart not found' });
+    const cartQuery = await data.query('SELECT id FROM cart WHERE user_id = $1', [user.id]);
+    if (cartQuery.rows.length === 0) return res.status(404).send({ message: 'Cart not found' });
 
-    const cart_id = cart[0].id;
-    const [item] = await data.query('SELECT id FROM cart_items WHERE cart_id = ? AND product_id = ?', [cart_id, product_id]);
-    if (item.length === 0) return res.status(404).send({ message: 'Product not found in cart' });
+    const cart_id = cartQuery.rows[0].id;
+    const itemQuery = await data.query('SELECT id FROM cart_items WHERE cart_id = $1 AND product_id = $2', [cart_id, product_id]);
+    if (itemQuery.rows.length === 0) return res.status(404).send({ message: 'Product not found in cart' });
 
-    await data.query('DELETE FROM cart_items WHERE id = ?', [item[0].id]);
-    const [remaining] = await data.query('SELECT COUNT(*) AS total FROM cart_items WHERE cart_id = ?', [cart_id]);
-    if (remaining[0].total === 0) await data.query('DELETE FROM cart WHERE id = ?', [cart_id]);
+    await data.query('DELETE FROM cart_items WHERE id = $1', [itemQuery.rows[0].id]);
+    const remainingQuery = await data.query('SELECT COUNT(*) AS total FROM cart_items WHERE cart_id = $1', [cart_id]);
+    if (parseInt(remainingQuery.rows[0].total) === 0) await data.query('DELETE FROM cart WHERE id = $1', [cart_id]);
 
     return res.status(200).send({ message: 'Product removed from cart successfully' });
   } catch (err) {
@@ -75,14 +77,14 @@ const getCart = async (req, res) => {
   try {
     const user = req.user;
 
-    const [cart] = await data.query('SELECT id FROM cart WHERE user_id = ?', [user.id]);
-    if (cart.length === 0) {
+    const cartQuery = await data.query('SELECT id FROM cart WHERE user_id = $1', [user.id]);
+    if (cartQuery.rows.length === 0) {
       return res.status(404).send({ message: 'Cart is empty' });
     }
 
-    const cart_id = cart[0].id;
+    const cart_id = cartQuery.rows[0].id;
 
-    const [items] = await data.query(
+    const itemsQuery = await data.query(
       `SELECT 
         cart_items.id AS cart_item_id,
         cart_items.quantity AS cart_quantity,
@@ -97,18 +99,19 @@ const getCart = async (req, res) => {
         products.is_active AS product_active
       FROM cart_items
       JOIN products ON cart_items.product_id = products.id
-      WHERE cart_items.cart_id = ?`,
+      WHERE cart_items.cart_id = $1`,
       [cart_id]
     );
 
-    if (items.length === 0) {
+    if (itemsQuery.rows.length === 0) {
       return res.status(404).send({ message: 'Cart is empty' });
     }
 
     let total = 0;
-    const formattedItems = items.map(item => {
+    const formattedItems = itemsQuery.rows.map(item => {
       const discountAmount = (item.product_price * item.product_discount) / 100;
-      const finalPrice = item.product_price - discountAmount;      const subtotal = finalPrice * item.cart_quantity;
+      const finalPrice = item.product_price - discountAmount;
+      const subtotal = finalPrice * item.cart_quantity;
       if (item.product_active === true && item.product_stock > 0) {
         total += subtotal;
       }
@@ -146,12 +149,12 @@ const getCart = async (req, res) => {
 const getCartCount = async (req, res) => {
   try {
     const user = req.user;
-    const [cart] = await data.query('SELECT id FROM cart WHERE user_id = ?', [user.id]);
-    if (cart.length === 0) return res.status(200).send({ count: 0 });
+    const cartQuery = await data.query('SELECT id FROM cart WHERE user_id = $1', [user.id]);
+    if (cartQuery.rows.length === 0) return res.status(200).send({ count: 0 });
 
-    const cart_id = cart[0].id;
-    const [result] = await data.query('SELECT SUM(quantity) AS total FROM cart_items WHERE cart_id = ?', [cart_id]);
-    return res.status(200).send({ count: result[0].total || 0 });
+    const cart_id = cartQuery.rows[0].id;
+    const resultQuery = await data.query('SELECT SUM(quantity) AS total FROM cart_items WHERE cart_id = $1', [cart_id]);
+    return res.status(200).send({ count: parseInt(resultQuery.rows[0].total) || 0 });
   } catch (err) {
     return res.status(500).send({ message: 'Server error' });
   }
@@ -165,44 +168,48 @@ const updateCartItem = async (req, res) => {
 
     if (!product_id) return res.status(400).send({ message: "Product ID is required" });
     if (!size) return res.status(400).send({ message: "Size is required" });
-    if (!color) return res.status(400).send({ message: "Color is required" });    const [product] = await data.query('SELECT id, stock, is_active FROM products WHERE id = ?', [product_id]);
-    if (product.length === 0 || product[0].is_active === false) return res.status(404).send({ message: 'Product not found' });let [cart] = await data.query('SELECT id FROM cart WHERE user_id = ?', [user.id]);
+    if (!color) return res.status(400).send({ message: "Color is required" });
+
+    const productQuery = await data.query('SELECT id, stock, is_active FROM products WHERE id = $1', [product_id]);
+    if (productQuery.rows.length === 0 || productQuery.rows[0].is_active === false) return res.status(404).send({ message: 'Product not found' });
+
+    let cartQuery = await data.query('SELECT id FROM cart WHERE user_id = $1', [user.id]);
     let cart_id;
-    if (cart.length === 0) {
-      const [newCart] = await data.query('INSERT INTO cart (user_id) VALUES (?) RETURNING id', [user.id]);
-      cart_id = newCart[0].id;
+    if (cartQuery.rows.length === 0) {
+      const newCartQuery = await data.query('INSERT INTO cart (user_id) VALUES ($1) RETURNING id', [user.id]);
+      cart_id = newCartQuery.rows[0].id;
     } else {
-      cart_id = cart[0].id;
+      cart_id = cartQuery.rows[0].id;
     }
 
-    const [existingItem] = await data.query(
-      'SELECT id, quantity FROM cart_items WHERE cart_id = ? AND product_id = ? AND size = ? AND color = ?',
+    const existingItemQuery = await data.query(
+      'SELECT id, quantity FROM cart_items WHERE cart_id = $1 AND product_id = $2 AND size = $3 AND color = $4',
       [cart_id, product_id, size, color]
     );
 
-    if (existingItem.length === 0) {
+    if (existingItemQuery.rows.length === 0) {
       if (delta <= 0) return res.status(400).send({ message: 'Cannot decrease, item not in cart' });
-      if (product[0].stock < delta) return res.status(400).send({ message: 'No stock available' });
+      if (productQuery.rows[0].stock < delta) return res.status(400).send({ message: 'No stock available' });
 
       await data.query(
-        'INSERT INTO cart_items (cart_id, product_id, quantity, size, color) VALUES (?, ?, ?, ?, ?)',
+        'INSERT INTO cart_items (cart_id, product_id, quantity, size, color) VALUES ($1, $2, $3, $4, $5)',
         [cart_id, product_id, delta, size, color]
       );
       return res.status(201).send({ message: 'Product added to cart', cart_id });
     }
 
-    let newQuantity = existingItem[0].quantity + delta;
+    let newQuantity = existingItemQuery.rows[0].quantity + delta;
 
     if (newQuantity <= 0) {
-      await data.query('DELETE FROM cart_items WHERE id = ?', [existingItem[0].id]);
-      const [remaining] = await data.query('SELECT COUNT(*) AS total FROM cart_items WHERE cart_id = ?', [cart_id]);
-      if (remaining[0].total === 0) await data.query('DELETE FROM cart WHERE id = ?', [cart_id]);
+      await data.query('DELETE FROM cart_items WHERE id = $1', [existingItemQuery.rows[0].id]);
+      const remainingQuery = await data.query('SELECT COUNT(*) AS total FROM cart_items WHERE cart_id = $1', [cart_id]);
+      if (parseInt(remainingQuery.rows[0].total) === 0) await data.query('DELETE FROM cart WHERE id = $1', [cart_id]);
       return res.status(200).send({ message: 'Product removed from cart', cart_id });
     }
 
-    if (newQuantity > product[0].stock) return res.status(400).send({ message: 'No stock available' });
+    if (newQuantity > productQuery.rows[0].stock) return res.status(400).send({ message: 'No stock available' });
 
-    await data.query('UPDATE cart_items SET quantity = ? WHERE id = ?', [newQuantity, existingItem[0].id]);
+    await data.query('UPDATE cart_items SET quantity = $1 WHERE id = $2', [newQuantity, existingItemQuery.rows[0].id]);
     return res.status(200).send({ message: 'Cart updated successfully', cart_id });
 
   } catch (err) {
@@ -210,7 +217,6 @@ const updateCartItem = async (req, res) => {
     return res.status(500).send({ message: 'Server error' });
   }
 };
-
 
 
 
@@ -236,24 +242,25 @@ const confirmPayment = async (req, res) => {
     });
     const payment_screenshot = uploadResult.secure_url;
 
-    const [cartRows] = await data.query("SELECT id FROM cart WHERE user_id = ?", [user.id]);
-
-    if (!cartRows || cartRows.length === 0) {
+    const cartQuery = await data.query("SELECT id FROM cart WHERE user_id = $1", [user.id]);
+    
+    if (!cartQuery.rows || cartQuery.rows.length === 0) {
       return res.status(404).send({ message: "Cart is empty" });
     }
 
-    const cart_id = cartRows[0].id;
-    const [cartItemsRows] = await data.query(
+    const cart_id = cartQuery.rows[0].id;
+    
+    const cartItemsQuery = await data.query(
       `SELECT ci.product_id, ci.quantity, ci.size, ci.color, p.title, p.price, p.discount, p.stock
        FROM cart_items ci
        JOIN products p ON ci.product_id = p.id
-       WHERE ci.cart_id = ?`,
+       WHERE ci.cart_id = $1`,
       [cart_id]
     );
 
     let items = [];
-    if (cartItemsRows && cartItemsRows.length > 0) {
-      items = cartItemsRows.map(r => ({
+    if (cartItemsQuery.rows && cartItemsQuery.rows.length > 0) {
+      items = cartItemsQuery.rows.map(r => ({
         product_id: r.product_id,
         quantity: r.quantity,
         size: r.size || "-",
@@ -264,26 +271,29 @@ const confirmPayment = async (req, res) => {
         stock: Number(r.stock) || 0
       }));
     } else {
-      const [cartDirectRows] = await data.query(
-        `SELECT product_id, quantity FROM cart WHERE user_id = ?`,
+      const cartDirectQuery = await data.query(
+        `SELECT product_id, quantity FROM cart WHERE user_id = $1`,
         [user.id]
       );
 
-      if (!cartDirectRows || cartDirectRows.length === 0) {
+      if (!cartDirectQuery.rows || cartDirectQuery.rows.length === 0) {
         return res.status(404).send({ message: "Cart is empty" });
       }
 
-      const productIds = cartDirectRows.map(r => r.product_id);
-      const [productsInfo] = await data.query(
-        `SELECT id, title, price, discount, stock FROM products WHERE id IN (${productIds.map(() => '?').join(',')})`,
+      const productIds = cartDirectQuery.rows.map(r => r.product_id);
+      const placeholders = productIds.map((_, index) => `$${index + 1}`).join(',');
+      
+      const productsQuery = await data.query(
+        `SELECT id, title, price, discount, stock FROM products WHERE id IN (${placeholders})`,
         productIds
       );
 
-      items = cartDirectRows.map(row => {
-        const p = productsInfo.find(pi => pi.id === row.product_id) || {};
+      items = cartDirectQuery.rows.map(row => {
+        const p = productsQuery.rows.find(pi => pi.id === row.product_id) || {};
         return {
           product_id: row.product_id,
-          quantity: row.quantity,          size: "-",
+          quantity: row.quantity,
+          size: "-",
           color: "-",
           title: p.title || "Unknown product",
           price: Number(p.price) || 0,
@@ -309,14 +319,16 @@ const confirmPayment = async (req, res) => {
 
       total += subtotal;
       itemList += `- ${item.title} (Size: ${item.size}, Color: ${item.color}) × ${item.quantity} = ${subtotal} جنيه\n`;
-    }    const [orderResult] = await data.query(
+    }
+
+    const orderQuery = await data.query(
       `INSERT INTO orders 
        (user_id, customer_name, customer_email, customer_phone, address, payment_method, payment_screenshot, total, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending') RETURNING id`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending') RETURNING id`,
       [user.id, user.name || "", user.email || "", user.phone || "", address, payment_method, payment_screenshot, total]
     );
 
-    const order_id = orderResult[0].id;
+    const order_id = orderQuery.rows[0].id;
 
     for (let item of items) {
       const discountAmount = (item.price * (item.discount || 0)) / 100;
@@ -324,13 +336,16 @@ const confirmPayment = async (req, res) => {
 
       await data.query(
         `INSERT INTO order_items (order_id, product_id, quantity, price)
-         VALUES (?, ?, ?, ?)`,
+         VALUES ($1, $2, $3, $4)`,
         [order_id, item.product_id, item.quantity, finalPrice]
-      );      await data.query(`UPDATE products SET stock = stock - ? WHERE id = ?`, [item.quantity, item.product_id]);    }
+      );
 
-    const message = `📦 طلب جديد\n👤 العميل: ${user.name}\n📞 رقم الهاتف: ${user.phone}\n💰 الإجمالي: ${total} جنيه\n💳 طريقة الدفع: ${payment_method}\n📍 العنوان: ${address}\n🛒 المنتجات:\n${itemList}\n📸 صورة الدفع: ${payment_screenshot}`;
+      await data.query(`UPDATE products SET stock = stock - $1 WHERE id = $2`, [item.quantity, item.product_id]);
+    }
+
+    const adminMessage = `📦 طلب جديد\n👤 العميل: ${user.name}\n📞 رقم الهاتف: ${user.phone}\n💰 الإجمالي: ${total} جنيه\n💳 طريقة الدفع: ${payment_method}\n📍 العنوان: ${address}\n🛒 المنتجات:\n${itemList}\n📸 صورة الدفع: ${payment_screenshot}`;
     
-    const message2 = `
+    const userMessage = `
 <h2>مرحباً ${user.name}!</h2>
 <p>شكراً لإتمام طلبك معنا. لقد استلمنا صورة الدفع الخاصة بك، وسيتم التحقق منها أولاً.</p>
 <p>إذا كانت صورة الدفع صحيحة، سيقوم فريقنا بالتواصل معك قبل موعد وصول الشحنة لتأكيد كل التفاصيل.</p>
@@ -343,38 +358,52 @@ const confirmPayment = async (req, res) => {
 <p>شكراً لتسوقك معنا! نتطلع لخدمتك بأفضل شكل ممكن ❤️</p>
 `;
 
+    let emailSuccess = false;
     try {
+
       let transporter = nodemailer.createTransport({
         service: "gmail",
         auth: {
           user: "yassefsea274@gmail.com",
           pass: "vyobfqfeuiiepivu"
-        }      });
-
-      await transporter.sendMail({
-        from: '"My Shop" <shop@example.com>',
-        to: "yassefsea111@gmail.com",
-        subject: "تأكيد الطلب الجديد",
-        text: message      });
-
-      await transporter.sendMail({
-        from: '"My Shop" <shop@example.com>',
-        to: `${user.email}`,
-        subject: "تأكيد الطلب الجديد",
-        html: message2
+        }
       });
 
+      await transporter.sendMail({
+        from: '"My Shop" <yassefsea274@gmail.com>',
+        to: "yassefsea111@gmail.com",
+        subject: "تأكيد الطلب الجديد",
+        text: adminMessage
+      });
+
+      await transporter.sendMail({
+        from: '"My Shop" <yassefsea274@gmail.com>',
+        to: user.email,
+        subject: "تأكيد الطلب الجديد",
+        html: userMessage
+      });
+
+      emailSuccess = true;
       console.log("✅ تم إرسال الإيميلات بنجاح");
     } catch (emailError) {
-      console.error("❌ خطأ في إرسال الإيميل:", emailError);
+      console.error("❌ خطأ في إرسال الإيميل:", emailError.message);
+      
+     d
+      emailSuccess = false;
     }
 
-    const [checkCartItemsAgain] = await data.query('SELECT COUNT(*) AS cnt FROM cart_items WHERE cart_id = ?', [cart_id]);
-    if (checkCartItemsAgain[0].cnt > 0) {
-      await data.query("DELETE FROM cart_items WHERE cart_id = ?", [cart_id]);
-      await data.query("DELETE FROM cart WHERE id = ?", [cart_id]);
-    } else {
-      await data.query("DELETE FROM cart WHERE user_id = ?", [user.id]);
+    try {
+      const checkCartItemsQuery = await data.query('SELECT COUNT(*) AS cnt FROM cart_items WHERE cart_id = $1', [cart_id]);
+      if (parseInt(checkCartItemsQuery.rows[0].cnt) > 0) {
+        await data.query("DELETE FROM cart_items WHERE cart_id = $1", [cart_id]);
+        await data.query("DELETE FROM cart WHERE id = $1", [cart_id]);
+      } else {
+        await data.query("DELETE FROM cart WHERE user_id = $1", [user.id]);
+      }
+      
+      console.log("✅ تم مسح الكارت بنجاح");
+    } catch (cartClearError) {
+      console.error("❌ خطأ في مسح الكارت:", cartClearError.message);
     }
 
     return res.status(200).send({
@@ -382,7 +411,10 @@ const confirmPayment = async (req, res) => {
       order_id,
       total,
       payment_screenshot,
+      email_sent: emailSuccess,
+      warning: emailSuccess ? null : "Order created successfully but email notification failed"
     });
+
   } catch (err) {
     console.error("Payment Error:", err);
     return res.status(500).send({ message: "Server error", error: err.message || err });
@@ -390,18 +422,17 @@ const confirmPayment = async (req, res) => {
 };
 
 
-
 const orderForUser=async (req, res) => {
   const  user = req.user;
-const userId=user.id;
+  const userId=user.id;
   try {
-    const [orders] = await data.query(
-      "SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC",
+    const ordersQuery = await data.query(
+      "SELECT * FROM orders WHERE user_id = $1 ORDER BY created_at DESC",
       [userId]
     );
 
-    for (let order of orders) {
-      const [items] = await data.query(
+    for (let order of ordersQuery.rows) {
+      const itemsQuery = await data.query(
         `SELECT 
           oi.product_id, 
           oi.quantity, 
@@ -410,16 +441,16 @@ const userId=user.id;
           p.image_url 
          FROM order_items oi
          JOIN products p ON oi.product_id = p.id
-         WHERE oi.order_id = ?`,
+         WHERE oi.order_id = $1`,
         [order.id]
       );
-      order.items = items; 
+      order.items = itemsQuery.rows; 
     }
 
     res.json({
       success: true,
-      count: orders.length,
-      orders,
+      count: ordersQuery.rows.length,
+      orders: ordersQuery.rows,
     });
   } catch (err) {
     console.error("Error fetching user orders:", err);
