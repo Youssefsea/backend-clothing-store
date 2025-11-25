@@ -17,17 +17,13 @@ const addToCart = async (req, res) => {
 
     if (quantity <= 0) return res.status(400).send({ message: 'Quantity must be greater than 0' });
     if (!size) return res.status(400).send({ message: 'Size is required' });
-    if (!color) return res.status(400).send({ message: 'Color is required' });
-
-    const [products] = await data.query('SELECT id, stock, is_active FROM products WHERE id = ?', [product_id]);
+    if (!color) return res.status(400).send({ message: 'Color is required' });    const [products] = await data.query('SELECT id, stock, is_active FROM products WHERE id = ?', [product_id]);
     if (products.length === 0 || products[0].is_active === false) return res.status(404).send({ message: 'Product not found' });
-    if (products[0].stock < quantity) return res.status(400).send({ message: 'Not enough stock' });
-
-    const [carts] = await data.query('SELECT id FROM cart WHERE user_id = ?', [user.id]);
+    if (products[0].stock < quantity) return res.status(400).send({ message: 'Not enough stock' });    const [carts] = await data.query('SELECT id FROM cart WHERE user_id = ?', [user.id]);
     let cart_id;
     if (carts.length === 0) {
-      const [newCart] = await data.query('INSERT INTO cart (user_id,product_id,quantity) VALUES (?,?,?)', [user.id,product_id,quantity]);
-      cart_id = newCart.insertId;
+      const [newCart] = await data.query('INSERT INTO cart (user_id,product_id,quantity) VALUES (?,?,?) RETURNING id', [user.id,product_id,quantity]);
+      cart_id = newCart[0].id;
     } else {
       cart_id = carts[0].id;
     }
@@ -116,8 +112,7 @@ const getCart = async (req, res) => {
     let total = 0;
     const formattedItems = items.map(item => {
       const discountAmount = (item.product_price * item.product_discount) / 100;
-      const finalPrice = item.product_price - discountAmount;
-      const subtotal = finalPrice * item.cart_quantity;
+      const finalPrice = item.product_price - discountAmount;      const subtotal = finalPrice * item.cart_quantity;
       if (item.product_active === true && item.product_stock > 0) {
         total += subtotal;
       }
@@ -174,16 +169,12 @@ const updateCartItem = async (req, res) => {
 
     if (!product_id) return res.status(400).send({ message: "Product ID is required" });
     if (!size) return res.status(400).send({ message: "Size is required" });
-    if (!color) return res.status(400).send({ message: "Color is required" });
-
-    const [product] = await data.query('SELECT id, stock, is_active FROM products WHERE id = ?', [product_id]);
-    if (product.length === 0 || product[0].is_active===false) return res.status(404).send({ message: 'Product not found' });
-
-    let [cart] = await data.query('SELECT id FROM cart WHERE user_id = ?', [user.id]);
+    if (!color) return res.status(400).send({ message: "Color is required" });    const [product] = await data.query('SELECT id, stock, is_active FROM products WHERE id = ?', [product_id]);
+    if (product.length === 0 || product[0].is_active === false) return res.status(404).send({ message: 'Product not found' });let [cart] = await data.query('SELECT id FROM cart WHERE user_id = ?', [user.id]);
     let cart_id;
     if (cart.length === 0) {
-      const [newCart] = await data.query('INSERT INTO cart (user_id) VALUES (?)', [user.id]);
-      cart_id = newCart.insertId;
+      const [newCart] = await data.query('INSERT INTO cart (user_id) VALUES (?) RETURNING id', [user.id]);
+      cart_id = newCart[0].id;
     } else {
       cart_id = cart[0].id;
     }
@@ -323,16 +314,14 @@ const confirmPayment = async (req, res) => {
 
       total += subtotal;
       itemList += `- ${item.title} (Size: ${item.size}, Color: ${item.color}) × ${item.quantity} = ${subtotal} جنيه\n`;
-    }
-
-    const [orderResult] = await data.query(
+    }    const [orderResult] = await data.query(
       `INSERT INTO orders 
        (user_id, customer_name, customer_email, customer_phone, address, payment_method, payment_screenshot, total, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending') RETURNING id`,
       [user.id, user.name || "", user.email || "", user.phone || "", address, payment_method, payment_screenshot, total]
     );
 
-    const order_id = orderResult.insertId;
+    const order_id = orderResult[0].id;
 
     for (let item of items) {
       const discountAmount = (item.price * (item.discount || 0)) / 100;

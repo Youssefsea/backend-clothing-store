@@ -36,7 +36,7 @@ const addProductSchema = Joi.object({
     .messages({
       "string.pattern.base": `"colors" must be a comma-separated string like "red,أحمر,blue,أزرق"`,
     }),
-  is_active: Joi.number().valid(0, 1).default(1),
+  is_active: Joi.boolean().default(true),
 });
 
 
@@ -47,7 +47,7 @@ const addProductSchema = Joi.object({
 const addToCartSchema = Joi.object({
 product_id: Joi.number().integer().required(),
   quantity: Joi.number().integer().min(1).required(),
-  size: Joi.string().valid('S', 'M', 'L', 'XL', 'XXL','XS','XXXL').required(),
+  size: Joi.string().valid('S', 'M', 'L', 'XL', 'XXL','XS','XXXL','XS').required(),
   color: Joi.string().required(),
 });
 

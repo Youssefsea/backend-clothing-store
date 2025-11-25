@@ -194,7 +194,7 @@ const updateProduct = async (req, res) => {
       updateValues
     );
 
-    if (result.affectedRows === 0) {
+    if (result.rowCount === 0) {
       return res.status(404).send({ message: 'Product not found' });
     }
 
@@ -237,10 +237,9 @@ const UnActtiveActtiveProduct=async(req,res)=>{
   
       const searchColor = color.trim();
   
-      // نبحث بحيث أي لون مطابق (عربي أو إنجليزي) يظهر
       const [products] = await data.query(
         `SELECT * FROM products 
-         WHERE is_active = 1
+         WHERE is_active = true
          AND (
            colors LIKE ? OR
            colors LIKE ? OR

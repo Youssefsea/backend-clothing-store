@@ -3,8 +3,8 @@ const data=require('../Data/data');
 
 const getAllOrders=async(req,res)=>{
     try{
-        const orders=await data.query('SELECT * FROM orders');
-        return res.status(200).send({message:'Orders fetched successfully',orders:orders[0]});
+        const [orders]=await data.query('SELECT * FROM orders');
+        return res.status(200).send({message:'Orders fetched successfully',orders:orders});
     }catch(err){
         return res.status(500).send({message:'Internal server error'});
     }
@@ -14,7 +14,7 @@ const getAllOrders=async(req,res)=>{
 const getOrderByUserId=async(req,res)=>{
     try{
         const {user_id}=req.body;
-        const orders=await data.query('SELECT * FROM orders WHERE user_id = ?',[user_id]);
+        const [orders]=await data.query('SELECT * FROM orders WHERE user_id = ?',[user_id]);
         return res.status(200).send({message:'Orders fetched successfully',orders});
     }catch(err){
         return res.status(500).send({message:'Internal server error'});
@@ -25,7 +25,7 @@ const getOrderByUserEmail=async(req,res)=>
 {
     try{
         const {email}=req.body;
-        const orders=await data.query('SELECT * FROM orders WHERE customer_email = ?',[email]);
+        const [orders]=await data.query('SELECT * FROM orders WHERE customer_email = ?',[email]);
         return res.status(200).send({message:'Orders fetched successfully',orders});
     }catch(err){
         return res.status(500).send({message:'Internal server error'});
@@ -34,13 +34,11 @@ const getOrderByUserEmail=async(req,res)=>
 
 const updateOrderStatus = async (req, res) => {
     try {
-      const { order_id, status } = req.body;
-  
-      const [currentOrder] = await data.query('SELECT status FROM orders WHERE id = ?', [order_id]);
-      if (!currentOrder || !currentOrder.length) {
+      const { order_id, status } = req.body;      const [currentOrder] = await data.query('SELECT status FROM orders WHERE id = ?', [order_id]);
+      if (!currentOrder || currentOrder.length === 0) {
         return res.status(404).send({ message: 'Order not found' });
       }
-  
+
       const oldStatus = currentOrder[0].status;
   
       if (status === 'cancelled' && oldStatus !== 'cancelled') {
@@ -81,7 +79,7 @@ const updateOrderStatus = async (req, res) => {
 const deleteUser=async(req,res)=>{
     try{
         const {user_id}=req.body;
-        const user=await data.query('DELETE FROM users WHERE id = ?',[user_id]);
+        const [user]=await data.query('DELETE FROM users WHERE id = ?',[user_id]);
         return res.status(200).send({message:'User deleted successfully',user});
     }catch(err){
         return res.status(500).send({message:'Internal server error'});
@@ -90,8 +88,8 @@ const deleteUser=async(req,res)=>{
 
 const getAllUsers=async(req,res)=>{
     try{
-        const users=await data.query('SELECT * FROM users');
-        return res.status(200).send({message:'Users fetched successfully',users:users[0]});
+        const [users]=await data.query('SELECT * FROM users');
+        return res.status(200).send({message:'Users fetched successfully',users:users});
     }catch(err){
         return res.status(500).send({message:'Internal server error'});
     }
@@ -100,7 +98,7 @@ const getAllUsers=async(req,res)=>{
 const getUserByEmail=async(req,res)=>{
     try{
         const {email}=req.body;
-        const user=await data.query('SELECT * FROM users WHERE email = ?',[email]);
+        const [user]=await data.query('SELECT * FROM users WHERE email = ?',[email]);
         return res.status(200).send({message:'User fetched successfully',user});
     }catch(err){
         return res.status(500).send({message:'Internal server error'});
@@ -110,7 +108,7 @@ const getUserByEmail=async(req,res)=>{
 const getUserByPhone=async(req,res)=>{
     try{
         const {phone}=req.body;
-        const user=await data.query('SELECT * FROM users WHERE phone = ?',[phone]);
+        const [user]=await data.query('SELECT * FROM users WHERE phone = ?',[phone]);
         return res.status(200).send({message:'User fetched successfully',user});
     }catch(err){
         return res.status(500).send({message:'Internal server error'});
