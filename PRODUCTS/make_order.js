@@ -317,7 +317,7 @@ const confirmPayment = async (req, res) => {
         const mg = mailgun.client({ username: 'api', key: process.env.MAILGUN_API_KEY, url: process.env.MAILGUN_API_URL });
 
         await mg.messages.create(process.env.MAILGUN_DOMAIN, {
-          from: 'My Shop <no-reply@sandboxaaa40f72b2db4ba0856934a175b037c3.mailgun.org>',
+          from: `My Shop <${process.env.MAILGUN_DOMAIN_NO_REPLY}>`,
           to: 'yassefsea111@gmail.com',
           subject: 'تأكيد الطلب الجديد',
           text: adminMessage(items, total, user, payment_method, address, payment_screenshot)
@@ -325,7 +325,7 @@ const confirmPayment = async (req, res) => {
 
         if (user.email) {
           await mg.messages.create(process.env.MAILGUN_DOMAIN, {
-            from: 'My Shop <no-reply@sandboxaaa40f72b2db4ba0856934a175b037c3.mailgun.org>',
+            from: `My Shop <${process.env.MAILGUN_DOMAIN_NO_REPLY}>`,
             to: user.email,
             subject: 'تأكيد الطلب الجديد',
             html: userMessage(items, total, user, payment_method, address)
