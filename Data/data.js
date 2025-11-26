@@ -31,9 +31,10 @@ function convertPlaceholders(query, values) {
 
 async function query(sql, params = []) {
   const text = convertPlaceholders(sql, params);
-  const client = await pool.connect();  try {
+  const client = await pool.connect();
+  try {
     const result = await client.query(text, params);
-    return [result.rows, result];
+    return result; // Return the full result object with .rows property
   } finally {
     client.release();
   }
