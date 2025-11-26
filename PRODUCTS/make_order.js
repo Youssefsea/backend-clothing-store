@@ -18,10 +18,12 @@ const addToCart = async (req, res) => {
     if (!size) return res.status(400).send({ message: 'Size is required' });
     if (!color) return res.status(400).send({ message: 'Color is required' });    const productsQuery = await data.query('SELECT id, stock, is_active FROM products WHERE id = $1', [product_id]);
     if (productsQuery.rows.length === 0 || productsQuery.rows[0].is_active === false) return res.status(404).send({ message: 'Product not found' });
-    if (productsQuery.rows[0].stock < quantity) return res.status(400).send({ message: 'Not enough stock' });    const cartsQuery = await data.query('SELECT id FROM cart WHERE user_id = $1', [user.id]);
+    if (productsQuery.rows[0].stock < quantity) return res.status(400).send({ message: 'Not enough stock' });
+
+    const cartsQuery = await data.query('SELECT id FROM cart WHERE user_id = $1', [user.id]);
     let cart_id;
     if (cartsQuery.rows.length === 0) {
-      const newCartQuery = await data.query('INSERT INTO cart (user_id) VALUES ($1) RETURNING id', [user.id]);
+      const newCartQuery = await data.query('INSERT INTO cart (user_id,product_id,quantity) VALUES ($1,$2,$3) RETURNING id', [user.id,product_id,quantity]);
       cart_id = newCartQuery.rows[0].id;
     } else {
       cart_id = cartsQuery.rows[0].id;
@@ -40,10 +42,10 @@ const addToCart = async (req, res) => {
 
     await data.query(
       'INSERT INTO cart_items (cart_id, product_id, quantity, size, color) VALUES ($1, $2, $3, $4, $5)',
-      [cart_id, product_id, quantity, size, color]    );return res.status(201).send({ message: 'Product added to cart successfully', cart_id });
+      [cart_id, product_id, quantity, size, color]
+    );return res.status(201).send({ message: 'Product added to cart successfully', cart_id });
   } catch (err) {
-    console.error('Add to cart error:', err);
-    return res.status(500).send({ message: 'Server error', error: err.message });
+    return res.status(500).send({ message: 'Server error' });
   }
 };
 
