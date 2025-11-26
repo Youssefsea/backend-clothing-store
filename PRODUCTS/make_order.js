@@ -221,7 +221,7 @@ const updateCartItem = async (req, res) => {
 
 
 const confirmPayment = async (req, res) => {
-  const client = await data.pool.connect(); // استخدام Pool للـ Transaction
+  const client = await data.connect(); // استخدام Pool للـ Transaction
   try {
     console.log("🚀 بدء عملية تأكيد الدفع...");
     const user = req.user;
