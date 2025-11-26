@@ -4,6 +4,7 @@ const multer = require('../middelware/multer');
 const cloudinary = require('../Data/cloudinary');
 const { Readable } = require('stream');
 const nodemailer = require("nodemailer");
+require('dotenv').config();
 
 
 
