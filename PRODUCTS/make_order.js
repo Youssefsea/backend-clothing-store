@@ -314,9 +314,9 @@ const confirmPayment = async (req, res) => {
         const formData = require('form-data');
         const Mailgun = require('mailgun.js');
         const mailgun = new Mailgun(formData);
-        const mg = mailgun.client({ username: 'api', key: 'f7daed81e073c91aa3338db5b38525f9-67edcffb-2a5cfd0e', url: 'https://api.mailgun.net' });
+        const mg = mailgun.client({ username: 'api', key: process.env.MAILGUN_API_KEY, url: process.env.MAILGUN_API_URL });
 
-        await mg.messages.create('sandboxaaa40f72b2db4ba0856934a175b037c3.mailgun.org', {
+        await mg.messages.create(process.env.MAILGUN_DOMAIN, {
           from: 'My Shop <no-reply@sandboxaaa40f72b2db4ba0856934a175b037c3.mailgun.org>',
           to: 'yassefsea111@gmail.com',
           subject: 'تأكيد الطلب الجديد',
@@ -324,7 +324,7 @@ const confirmPayment = async (req, res) => {
         });
 
         if (user.email) {
-          await mg.messages.create('sandboxaaa40f72b2db4ba0856934a175b037c3.mailgun.org', {
+          await mg.messages.create(process.env.MAILGUN_DOMAIN, {
             from: 'My Shop <no-reply@sandboxaaa40f72b2db4ba0856934a175b037c3.mailgun.org>',
             to: user.email,
             subject: 'تأكيد الطلب الجديد',
