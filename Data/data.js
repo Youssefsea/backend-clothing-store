@@ -29,15 +29,14 @@ function convertPlaceholders(query, values) {
   });
 }
 
-async function query(sql, params = []) {
+async function data(sql, params = []) {
   const text = convertPlaceholders(sql, params);
-  const client = await pool.connect();
-  try {
+  const client = await pool.connect();  try {
     const result = await client.query(text, params);
-    return result; // Return the full result object with .rows property
+    return [result.rows, result];
   } finally {
     client.release();
   }
 }
 
-module.exports = { query };
+module.exports = { data };
