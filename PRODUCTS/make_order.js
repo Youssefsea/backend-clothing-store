@@ -221,14 +221,13 @@ const updateCartItem = async (req, res) => {
 
 
 const confirmPayment = async (req, res) => {
-  const client = await data.connect(); // استخدام Pool للـ Transaction
+  const client = await data.connect();
   try {
     console.log("🚀 بدء عملية تأكيد الدفع...");
     const user = req.user;
     const { payment_method, address } = req.body;
     const file = req.file;
 
-    // التحقق من البيانات المطلوبة
     if (!payment_method)
       return res.status(400).send({ message: "Payment method is required" });
     if (!address)
@@ -236,7 +235,6 @@ const confirmPayment = async (req, res) => {
     if (!file)
       return res.status(400).send({ message: "Payment screenshot is required" });
 
-    // رفع صورة الدفع
     console.log("📤 رفع صورة الدفع...");
     const uploadResult = await new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
@@ -248,7 +246,6 @@ const confirmPayment = async (req, res) => {
     const payment_screenshot = uploadResult.secure_url;
     console.log("✅ تم رفع صورة الدفع بنجاح");
 
-    // التحقق من الكارت والمنتجات
     console.log("🛒 فحص الكارت والمنتجات...");
     const cartQuery = await data.query("SELECT id FROM cart WHERE user_id = $1", [user.id]);
     if (!cartQuery.rows || cartQuery.rows.length === 0) {
@@ -280,32 +277,21 @@ const confirmPayment = async (req, res) => {
       is_active: r.is_active
     }));
 
-    // التحقق من توفر المنتجات
     console.log("📊 فحص توفر المنتجات...");
     let total = 0;
-    let itemList = "";
-
     for (let item of items) {
       if (!item.is_active)
         return res.status(400).send({ message: `Product ${item.title} is no longer available` });
-
       if (item.stock < item.quantity)
         return res.status(400).send({ message: `Not enough stock for product ${item.title}` });
-
       const discountAmount = (item.price * (item.discount || 0)) / 100;
       const finalPrice = Number(item.price) - discountAmount;
-      const subtotal = finalPrice * item.quantity;
-
-      total += subtotal;
-      itemList += `- ${item.title} (Size: ${item.size}, Color: ${item.color}) × ${item.quantity} = ${subtotal.toFixed(2)} جنيه\n`;
+      total += finalPrice * item.quantity;
     }
-
     console.log(`💰 المجموع الكلي: ${total.toFixed(2)} جنيه`);
 
-    // إنشاء Transaction
     await client.query('BEGIN');
 
-    // إنشاء الطلب
     const orderQuery = await client.query(
       `INSERT INTO orders 
        (user_id, customer_name, customer_email, customer_phone, address, payment_method, payment_screenshot, total, status)
@@ -314,28 +300,25 @@ const confirmPayment = async (req, res) => {
     );
     const order_id = orderQuery.rows[0].id;
 
-    // إضافة عناصر الطلب وتحديث المخزون
+    await client.query(`SELECT setval('order_items_id_seq', (SELECT COALESCE(MAX(id),0) FROM order_items))`);
+
     for (let item of items) {
       const discountAmount = (item.price * (item.discount || 0)) / 100;
       const finalPrice = Number(item.price) - discountAmount;
-
       await client.query(
         `INSERT INTO order_items (order_id, product_id, quantity, price)
          VALUES ($1, $2, $3, $4)`,
         [order_id, item.product_id, item.quantity, finalPrice]
       );
-
       await client.query(`UPDATE products SET stock = stock - $1 WHERE id = $2`, [item.quantity, item.product_id]);
     }
 
-    // مسح الكارت
     await client.query("DELETE FROM cart_items WHERE cart_id = $1", [cart_id]);
     await client.query("DELETE FROM cart WHERE id = $1", [cart_id]);
 
     await client.query('COMMIT');
     console.log("🎉 تم إنشاء الطلب وتحديث المخزون ومسح الكارت بنجاح!");
 
-    // إرسال الإيميلات بشكل Async بعد نجاح العملية
     (async () => {
       try {
         const transporter = nodemailer.createTransport({
@@ -344,11 +327,9 @@ const confirmPayment = async (req, res) => {
             user: "yassefsea274@gmail.com",
             pass: "mkdg nvya vttg axrb"
           },
-          // timeout أقل للـ Gmail
           connectionTimeout: 10000
         });
 
-        // رسالة للأدمن
         await transporter.sendMail({
           from: '"My Shop" <yassefsea274@gmail.com>',
           to: "yassefsea111@gmail.com",
@@ -356,7 +337,6 @@ const confirmPayment = async (req, res) => {
           text: adminMessage(items, total, user, payment_method, address, payment_screenshot)
         });
 
-        // رسالة للعميل
         if (user.email) {
           await transporter.sendMail({
             from: '"My Shop" <yassefsea274@gmail.com>',
@@ -389,7 +369,6 @@ const confirmPayment = async (req, res) => {
   }
 };
 
-// دوال مساعدة لصياغة الرسائل
 function adminMessage(items, total, user, payment_method, address, payment_screenshot) {
   let itemList = items.map(i => `- ${i.title} (Size: ${i.size}, Color: ${i.color}) × ${i.quantity} = ${(i.price*(1-(i.discount||0)/100)*i.quantity).toFixed(2)} جنيه`).join('\n');
   return `📦 طلب جديد\n👤 العميل: ${user.name}\n📧 البريد: ${user.email}\n📞 رقم الهاتف: ${user.phone}\n💰 الإجمالي: ${total.toFixed(2)} جنيه\n💳 طريقة الدفع: ${payment_method}\n📍 العنوان: ${address}\n🛒 المنتجات:\n${itemList}\n📸 صورة الدفع: ${payment_screenshot}`;
@@ -410,6 +389,7 @@ function userMessage(items, total, user, payment_method, address) {
 <p>شكراً لتسوقك معنا! نتطلع لخدمتك بأفضل شكل ممكن ❤️</p>
 `;
 }
+
 
 
 
