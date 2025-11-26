@@ -9,7 +9,8 @@ const getAllProducts=async(req,res)=>{
 {
 const c=cache.get('allProducts');
 if(c){return res.status(200).send({message:'All Products',allProducts:c})}
-const [products]=await data.query('SELECT * FROM products WHERE is_active=true');
+const result=await data.query('SELECT * FROM products WHERE is_active=true');
+const products = result.rows;
 if(products.length===0){return res.status(404).send({message:'No products found'})}
 cache.set('allProducts',products);
 return res.status(200).send({message:'All Products',allProducts:products});
@@ -24,7 +25,8 @@ const {title}=req.body;
 const u=`product_${title}`;
 const c=cache.get(u);
 if(c){return res.status(200).send({message:'Product found',product:c})}
-const [product]=await data.query('SELECT * FROM products WHERE title=? AND is_active=true',[title]);
+const result=await data.query('SELECT * FROM products WHERE title=$1 AND is_active=true',[title]);
+const product = result.rows;
 if(product.length===0){return res.status(404).send({message:'Product not found'})}
 cache.set(u,product)
 return res.status(200).send({message:'Product found',product:product})
@@ -38,7 +40,8 @@ const {category_name}=req.body;
 const u=`cate_${category_name}`;
 const c=cache.get(u);
 if(c){return res.status(200).send({message:'Products found',products:c})}
-const [productsByCate]=await data.query('SELECT * FROM products WHERE category_name=? AND is_active=true',[category_name]);
+const result=await data.query('SELECT * FROM products WHERE category_name=$1 AND is_active=true',[category_name]);
+const productsByCate = result.rows;
 if(productsByCate.length===0){return res.status(404).send({message:'No products found in this category'})}
 cache.set(u,productsByCate)
 return res.status(200).send({message:'Products found',products:productsByCate});
@@ -53,7 +56,8 @@ const {minPrice,maxPrice}=req.body;
 const u=`range_${minPrice}_${maxPrice}`;
 const c=cache.get(u);
 if(c){return res.status(200).send({message:'Products found',products:c})}
-const [productsRange]=await data.query('SELECT * FROM products WHERE price BETWEEN ? AND ? AND is_active=true',[minPrice,maxPrice]);
+const result=await data.query('SELECT * FROM products WHERE price BETWEEN $1 AND $2 AND is_active=true',[minPrice,maxPrice]);
+const productsRange = result.rows;
 if(productsRange.length===0)return res.status(404).send({message:'No products found in this price range'})
 cache.set(u,productsRange)
 return res.status(200).send({message:'Products found',products:productsRange});
@@ -88,9 +92,9 @@ const addProduct = async (req, res) => {
 
     const image_url = imageUrls.join(",");
 
-    await data.query(
+    const result = await data.query(
       `INSERT INTO products (title, description, price, discount, stock, image_url, category_name, sizes, colors, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, true)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true)`,
       [title, description, price, discount, stock, image_url, category_name, sizes, colors]
     );
 
@@ -150,12 +154,12 @@ const updateProduct = async (req, res) => {
     const updateValues = [];
 
     updateFields.push(
-      'title = ?',
-      'description = ?',
-      'price = ?',
-      'category_name = ?',
-      'discount = ?',
-      'stock = ?'
+      'title = $1',
+      'description = $2',
+      'price = $3',
+      'category_name = $4',
+      'discount = $5',
+      'stock = $6'
     );
 
     updateValues.push(
@@ -167,30 +171,36 @@ const updateProduct = async (req, res) => {
       Number(stock) || 0
     );
 
+    let parameterCount = 7; // Starting from $7 since we have 6 basic fields
+
     if (finalImageUrl) {
-      updateFields.push('image_url = ?');
+      updateFields.push(`image_url = $${parameterCount}`);
       updateValues.push(finalImageUrl);
+      parameterCount++;
     }
 
     if (sizes) {
-      updateFields.push('sizes = ?');
+      updateFields.push(`sizes = $${parameterCount}`);
       updateValues.push(Array.isArray(sizes) ? sizes.join(',') : String(sizes));
+      parameterCount++;
     }
 
     if (colors) {
-      updateFields.push('colors = ?');
+      updateFields.push(`colors = $${parameterCount}`);
       updateValues.push(Array.isArray(colors) ? colors.join(',') : String(colors));
+      parameterCount++;
     }
 
     if (is_active !== undefined) {
-      updateFields.push('is_active = ?');
+      updateFields.push(`is_active = $${parameterCount}`);
       updateValues.push(is_active);
+      parameterCount++;
     }
 
     updateValues.push(id);
 
-    const [result] = await data.query(
-      `UPDATE products SET ${updateFields.join(', ')} WHERE id = ?`,
+    const result = await data.query(
+      `UPDATE products SET ${updateFields.join(', ')} WHERE id = $${parameterCount}`,
       updateValues
     );
 
@@ -214,13 +224,14 @@ const UnActtiveActtiveProduct=async(req,res)=>{
   try
   {
   const {id}=req.body;
-  const [product]=await data.query('SELECT is_active FROM products WHERE id=?',[id]);
+  const result=await data.query('SELECT is_active FROM products WHERE id=$1',[id]);
+  const product = result.rows;
   
   if(product.length===0){return res.status(404).send({message:'Product not found'})}
   
   const newStatus=product[0].is_active?false:true;
 
-  await data.query('UPDATE products SET is_active=? WHERE id=?',[newStatus,id]);
+  await data.query('UPDATE products SET is_active=$1 WHERE id=$2',[newStatus,id]);
   cache.flushAll()
   return res.status(200).send({message:`Product ${newStatus?'activated':'deactivated'} successfully`});
   }
@@ -237,17 +248,18 @@ const UnActtiveActtiveProduct=async(req,res)=>{
   
       const searchColor = color.trim();
   
-      const [products] = await data.query(
+      const result = await data.query(
         `SELECT * FROM products 
          WHERE is_active = true
          AND (
-           colors LIKE ? OR
-           colors LIKE ? OR
-           colors LIKE ? OR
-           colors = ?
+           colors LIKE $1 OR
+           colors LIKE $2 OR
+           colors LIKE $3 OR
+           colors = $4
          )`,
         [`${searchColor},%`, `%,${searchColor},%`, `%,${searchColor}`, searchColor]
       );
+      const products = result.rows;
   
       if (products.length === 0) {
         return res.status(404).send({ message: 'No products found for this color' });
