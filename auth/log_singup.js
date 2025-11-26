@@ -10,10 +10,11 @@ const sendOTPEmail = async(req,res)=>
   {
     try{
 const {email,phone}=req.body;
-    const [existing] = await data.query(
-      "SELECT id FROM users WHERE email = ? OR phone = ?",
+    const result = await data.query(
+      "SELECT id FROM users WHERE email = $1 OR phone = $2",
       [email, phone]
     );
+    const existing = result.rows;
     if (existing.length > 0) {
       return res.status(409).send({ message: "Email or phone already exists" });
     }        const otp = crypto.randomInt(100000, 999999).toString();
@@ -45,10 +46,8 @@ if (!storedOtp || storedOtp !== otp) {
 
     const hashedPassword = await bcrypt.hash(password, 12);
 
-
-
     await data.query(
-      "INSERT INTO users (name, email, password, phone) VALUES (?, ?, ?, ?)",
+      "INSERT INTO users (name, email, password, phone) VALUES ($1, $2, $3, $4)",
       [name, email, hashedPassword, phone]
     );
 
@@ -65,8 +64,9 @@ const login = async (req, res) => {
   try {
     const { email, password } = req.body;
     const EmailFound =
-      "SELECT id, name, email, role, phone, password FROM users WHERE email = ?";
-    const [userInfo] = await data.query(EmailFound, [email]);
+      "SELECT id, name, email, role, phone, password FROM users WHERE email = $1";
+    const result = await data.query(EmailFound, [email]);
+    const userInfo = result.rows;
 
     if (userInfo.length === 0) {
       return res.status(404).send({ message: "Invalid email or password" });
