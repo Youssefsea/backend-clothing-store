@@ -228,12 +228,9 @@ const confirmPayment = async (req, res) => {
     const { payment_method, address } = req.body;
     const file = req.file;
 
-    if (!payment_method)
-      return res.status(400).send({ message: "Payment method is required" });
-    if (!address)
-      return res.status(400).send({ message: "Address is required" });
-    if (!file)
-      return res.status(400).send({ message: "Payment screenshot is required" });
+    if (!payment_method) return res.status(400).send({ message: "Payment method is required" });
+    if (!address) return res.status(400).send({ message: "Address is required" });
+    if (!file) return res.status(400).send({ message: "Payment screenshot is required" });
 
     console.log("📤 رفع صورة الدفع...");
     const uploadResult = await new Promise((resolve, reject) => {
@@ -248,9 +245,7 @@ const confirmPayment = async (req, res) => {
 
     console.log("🛒 فحص الكارت والمنتجات...");
     const cartQuery = await data.query("SELECT id FROM cart WHERE user_id = $1", [user.id]);
-    if (!cartQuery.rows || cartQuery.rows.length === 0) {
-      return res.status(404).send({ message: "Cart is empty" });
-    }
+    if (!cartQuery.rows || cartQuery.rows.length === 0) return res.status(404).send({ message: "Cart is empty" });
     const cart_id = cartQuery.rows[0].id;
 
     const cartItemsQuery = await data.query(
@@ -260,10 +255,7 @@ const confirmPayment = async (req, res) => {
        WHERE ci.cart_id = $1`,
       [cart_id]
     );
-
-    if (!cartItemsQuery.rows || cartItemsQuery.rows.length === 0) {
-      return res.status(404).send({ message: "No items in cart" });
-    }
+    if (!cartItemsQuery.rows || cartItemsQuery.rows.length === 0) return res.status(404).send({ message: "No items in cart" });
 
     const items = cartItemsQuery.rows.map(r => ({
       product_id: r.product_id,
@@ -280,15 +272,13 @@ const confirmPayment = async (req, res) => {
     console.log("📊 فحص توفر المنتجات...");
     let total = 0;
     for (let item of items) {
-      if (!item.is_active)
-        return res.status(400).send({ message: `Product ${item.title} is no longer available` });
-      if (item.stock < item.quantity)
-        return res.status(400).send({ message: `Not enough stock for product ${item.title}` });
+      if (!item.is_active) return res.status(400).send({ message: `Product ${item.title} is no longer available` });
+      if (item.stock < item.quantity) return res.status(400).send({ message: `Not enough stock for product ${item.title}` });
+
       const discountAmount = (item.price * (item.discount || 0)) / 100;
       const finalPrice = Number(item.price) - discountAmount;
       total += finalPrice * item.quantity;
     }
-    console.log(`💰 المجموع الكلي: ${total.toFixed(2)} جنيه`);
 
     await client.query('BEGIN');
 
@@ -300,16 +290,16 @@ const confirmPayment = async (req, res) => {
     );
     const order_id = orderQuery.rows[0].id;
 
-    await client.query(`SELECT setval('order_items_id_seq', (SELECT COALESCE(MAX(id),0) FROM order_items))`);
-
     for (let item of items) {
       const discountAmount = (item.price * (item.discount || 0)) / 100;
       const finalPrice = Number(item.price) - discountAmount;
+
       await client.query(
         `INSERT INTO order_items (order_id, product_id, quantity, price)
          VALUES ($1, $2, $3, $4)`,
         [order_id, item.product_id, item.quantity, finalPrice]
       );
+
       await client.query(`UPDATE products SET stock = stock - $1 WHERE id = $2`, [item.quantity, item.product_id]);
     }
 
@@ -321,32 +311,28 @@ const confirmPayment = async (req, res) => {
 
     (async () => {
       try {
-        const transporter = nodemailer.createTransport({
-          service: "gmail",
-          auth: {
-            user: "yassefsea274@gmail.com",
-            pass: "mkdg nvya vttg axrb"
-          },
-          connectionTimeout: 10000
-        });
+        const formData = require('form-data');
+        const Mailgun = require('mailgun.js');
+        const mailgun = new Mailgun(formData);
+        const mg = mailgun.client({ username: 'api', key: 'f7daed81e073c91aa3338db5b38525f9-67edcffb-2a5cfd0e', url: 'https://api.mailgun.net' });
 
-        await transporter.sendMail({
-          from: '"My Shop" <yassefsea274@gmail.com>',
-          to: "yassefsea111@gmail.com",
-          subject: "تأكيد الطلب الجديد",
+        await mg.messages.create('sandboxaaa40f72b2db4ba0856934a175b037c3.mailgun.org', {
+          from: 'My Shop <no-reply@sandboxaaa40f72b2db4ba0856934a175b037c3.mailgun.org>',
+          to: 'yassefsea111@gmail.com',
+          subject: 'تأكيد الطلب الجديد',
           text: adminMessage(items, total, user, payment_method, address, payment_screenshot)
         });
 
         if (user.email) {
-          await transporter.sendMail({
-            from: '"My Shop" <yassefsea274@gmail.com>',
+          await mg.messages.create('sandboxaaa40f72b2db4ba0856934a175b037c3.mailgun.org', {
+            from: 'My Shop <no-reply@sandboxaaa40f72b2db4ba0856934a175b037c3.mailgun.org>',
             to: user.email,
-            subject: "تأكيد الطلب الجديد",
+            subject: 'تأكيد الطلب الجديد',
             html: userMessage(items, total, user, payment_method, address)
           });
         }
 
-        console.log("✅ تم إرسال الإيميلات بنجاح");
+        console.log("✅ تم إرسال الإيميلات بنجاح عبر Mailgun");
       } catch (emailErr) {
         console.error("❌ فشل في إرسال الإيميلات:", emailErr.message);
       }
@@ -376,8 +362,7 @@ function adminMessage(items, total, user, payment_method, address, payment_scree
 
 function userMessage(items, total, user, payment_method, address) {
   let itemList = items.map(i => `- ${i.title} (Size: ${i.size}, Color: ${i.color}) × ${i.quantity} = ${(i.price*(1-(i.discount||0)/100)*i.quantity).toFixed(2)} جنيه`).join('<br>');
-  return `
-<h2>مرحباً ${user.name}!</h2>
+  return `<h2>مرحباً ${user.name}!</h2>
 <p>شكراً لإتمام طلبك معنا. لقد استلمنا صورة الدفع الخاصة بك، وسيتم التحقق منها أولاً.</p>
 <p>إذا كانت صورة الدفع صحيحة، سيقوم فريقنا بالتواصل معك قبل موعد وصول الشحنة لتأكيد كل التفاصيل.</p>
 <ul>
@@ -386,8 +371,7 @@ function userMessage(items, total, user, payment_method, address) {
   <li>📍 <b>العنوان:</b> ${address}</li>
 </ul>
 <p><b>🛒 المنتجات:</b><br>${itemList}</p>
-<p>شكراً لتسوقك معنا! نتطلع لخدمتك بأفضل شكل ممكن ❤️</p>
-`;
+<p>شكراً لتسوقك معنا! نتطلع لخدمتك بأفضل شكل ممكن ❤️</p>`;
 }
 
 
