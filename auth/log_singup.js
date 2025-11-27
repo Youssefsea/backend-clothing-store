@@ -6,6 +6,7 @@ const NodeCache = require("node-cache");
 const {sendEmail}=require('./OTPemail');
 
 const otpCache = new NodeCache({ stdTTL: 60, checkperiod: 10 });
+
 const sendOTPEmail = async(req,res)=>
   {
     try{

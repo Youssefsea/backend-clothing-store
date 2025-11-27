@@ -275,7 +275,6 @@ const confirmPayment = async (req, res) => {
     for (let item of items) {
       if (!item.is_active) return res.status(400).send({ message: `Product ${item.title} is no longer available` });
       if (item.stock < item.quantity) return res.status(400).send({ message: `Not enough stock for product ${item.title}` });
-
       const discountAmount = (item.price * (item.discount || 0)) / 100;
       const finalPrice = Number(item.price) - discountAmount;
       total += finalPrice * item.quantity;
@@ -310,39 +309,36 @@ const confirmPayment = async (req, res) => {
     await client.query('COMMIT');
     console.log("🎉 تم إنشاء الطلب وتحديث المخزون ومسح الكارت بنجاح!");
 
-    // إرسال الإيميلات عبر Mailgun
-    (async () => {
-      try {
-        const formData = require('form-data');
-        const Mailgun = require('mailgun.js');
-        const mailgun = new Mailgun(formData);
-        const mg = mailgun.client({ 
-          username: 'api', 
-          key: process.env.MAILGUN_API_KEY, 
-          url: process.env.MAILGUN_API_URL 
-        });
-
-        await mg.messages.create(process.env.MAILGUN_DOMAIN, {
-          from: `My Shop <${process.env.MAILGUN_DOMAIN_NO_REPLY}>`,
-          to: 'yassefsea111@gmail.com',
-          subject: 'تأكيد الطلب الجديد',
-          text: adminMessage(items, total, user, payment_method, address, payment_screenshot)
-        });
-
-        if (user.email) {
-          await mg.messages.create(process.env.MAILGUN_DOMAIN, {
-            from: `My Shop <${process.env.MAILGUN_DOMAIN_NO_REPLY}>`,
-            to: user.email,
-            subject: 'تأكيد الطلب الجديد',
-            html: userMessage(items, total, user, payment_method, address)
-          });
-        }
-
-        console.log("✅ تم إرسال الإيميلات بنجاح عبر Mailgun");
-      } catch (emailErr) {
-        console.error("❌ فشل في إرسال الإيميلات:", emailErr.message);
+    // ===== إرسال الإيميل عبر Gmail SMTP =====
+    const transporter = nodemailer.createTransport({
+      host: "smtp.gmail.com",
+      port: 587,
+      secure: false,
+      auth: {
+        user: process.env.GMAIL_USER,       // إيميلك
+        pass: process.env.GMAIL_APP_PASS    // App Password
       }
-    })();
+    });
+
+    // رسالة للأدمن
+    await transporter.sendMail({
+      from: `"My Shop" <${process.env.GMAIL_USER}>`,
+      to: "yassefsea111@gmail.com",
+      subject: 'تأكيد الطلب الجديد',
+      text: adminMessage(items, total, user, payment_method, address, payment_screenshot)
+    });
+
+    // رسالة للزبون
+    if (user.email) {
+      await transporter.sendMail({
+        from: `"My Shop" <${process.env.GMAIL_USER}>`,
+        to: user.email,
+        subject: 'تأكيد الطلب الجديد',
+        html: userMessage(items, total, user, payment_method, address)
+      });
+    }
+
+    console.log("✅ تم إرسال الإيميلات بنجاح عبر Gmail SMTP");
 
     return res.status(200).send({
       message: "Payment confirmed successfully",
