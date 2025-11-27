@@ -315,14 +315,14 @@ const confirmPayment = async (req, res) => {
       port: 587,
       secure: false,
       auth: {
-        user: process.env.GMAIL_USER,       // إيميلك
-        pass: process.env.GMAIL_APP_PASS    // App Password
+        user: "yassefsea274@gmail.com",       // إيميلك
+        pass: "vjgf odiu nnul krpg"    // App Password
       }
     });
 
     // رسالة للأدمن
     await transporter.sendMail({
-      from: `"My Shop" <${process.env.GMAIL_USER}>`,
+      from: `"My Shop" <yassefsea274@gmail.com>`,
       to: "yassefsea111@gmail.com",
       subject: 'تأكيد الطلب الجديد',
       text: adminMessage(items, total, user, payment_method, address, payment_screenshot)
@@ -331,7 +331,7 @@ const confirmPayment = async (req, res) => {
     // رسالة للزبون
     if (user.email) {
       await transporter.sendMail({
-        from: `"My Shop" <${process.env.GMAIL_USER}>`,
+        from: `"My Shop" <yassefsea274@gmail.com>`,
         to: user.email,
         subject: 'تأكيد الطلب الجديد',
         html: userMessage(items, total, user, payment_method, address)
