@@ -85,6 +85,7 @@ res.cookie("token", token, {
   sameSite: "None", 
   secure: true, 
   maxAge: 2 * 60 * 60 * 1000
+  
 });
 
 
