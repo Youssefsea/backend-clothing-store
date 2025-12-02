@@ -7,24 +7,66 @@ const {sendEmail}=require('./OTPemail');
 
 const otpCache = new NodeCache({ stdTTL: 60, checkperiod: 10 });
 
-const sendOTPEmail = async(req,res)=>
-  {
-    try{
-const {email,phone}=req.body;
+const sendOTPEmail = async(req,res) => {
+  try {
+    console.log("Send OTP request received:", req.body);
+    
+    const {email, phone} = req.body;
+    
+    // Validate input
+    if (!email || !phone) {
+      return res.status(400).json({ 
+        message: "Email and phone are required" 
+      });
+    }
+    
+    // Check if user already exists
     const result = await data.query(
       "SELECT id FROM users WHERE email = $1 OR phone = $2",
       [email, phone]
     );
+    
     const existing = result.rows;
     if (existing.length > 0) {
-      return res.status(409).send({ message: "Email or phone already exists" });
-    }        const otp = crypto.randomInt(100000, 999999).toString();
+      return res.status(409).json({ 
+        message: "Email or phone already exists" 
+      });
+    }
+    
+    // Generate OTP
+    const otp = crypto.randomInt(100000, 999999).toString();
+    console.log(`Generated OTP for ${email}: ${otp}`);
+    
+    // Store OTP in cache
     otpCache.set(email, otp);
-        await sendEmail(email, otp);
-  return res.status(200).send({ message: "OTP sent to your email" });
-  } catch(err){
+    
+    // Send email
+    await sendEmail(email, otp);
+    console.log(`OTP sent successfully to ${email}`);
+    
+    return res.status(200).json({ 
+      message: "OTP sent to your email successfully" 
+    });
+    
+  } catch(err) {
     console.error("Error in sendOTPEmail:", err);
-    return res.status(500).send({ message: "Server error" });
+    
+    // More specific error messages
+    if (err.message.includes('connect ECONNREFUSED')) {
+      return res.status(500).json({ 
+        message: "Database connection failed" 
+      });
+    }
+    
+    if (err.message.includes('Invalid login')) {
+      return res.status(500).json({ 
+        message: "Email service configuration error" 
+      });
+    }
+    
+    return res.status(500).json({ 
+      message: "Failed to send OTP. Please try again." 
+    });
   }
 };
 
