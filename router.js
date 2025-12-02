@@ -11,8 +11,13 @@ const rateLimit = require("express-rate-limit");
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
-  message: "Too many requests, please try again later."
-  
+  message: "Too many requests, please try again later.",
+  standardHeaders: true,
+  legacyHeaders: false,
+  trustProxy: true,
+  validate: {
+    xForwardedForHeader: false
+  }
 });
 
 
@@ -47,7 +52,7 @@ router.delete('/admin/users/delete',middelware.sureToken,middelware.verifyRole,a
 router.get('/admin/users',middelware.sureToken,middelware.verifyRole,admin.getAllUsers);
 router.get('/admin/users/email',middelware.sureToken,middelware.verifyRole,admin.getUserByEmail);
 router.get('/admin/users/phone',middelware.sureToken,middelware.verifyRole,admin.getUserByPhone);
-router.get('/admin/orders/userEmail',middelware.sureToken,middelware.verifyRole,admin.getOrderByUserEmail)
+router.get('/admin/orders/userEmail',middelware.sureToken,middelware.verifyRole,admin.getOrderByUserEmail);
 router.get('/isLoggedIn',middelware.sureToken,admin.isLoggedIn);
 
 router.post('/logout', middelware.sureToken, (req, res) => {

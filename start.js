@@ -7,7 +7,7 @@ const cookieParser = require("cookie-parser");
 const helmet = require("helmet");
 
 dotenv.config();
-app.set("trust proxy", 1);
+app.set("trust proxy", ["loopback", "linklocal", "uniquelocal"]);
 app.use(express.json());
 app.use(cookieParser());
 app.use(
@@ -34,10 +34,8 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
     exposedHeaders: ["Authorization"],
     preflightContinue: false,
-    optionsSuccessStatus: 200
-  })
+    optionsSuccessStatus: 200  })
 );
-app.options("*", cors());
 app.use('/', router);
 
 app.use((err, req, res, next) => {
