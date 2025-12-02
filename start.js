@@ -7,7 +7,9 @@ const cookieParser = require("cookie-parser");
 const helmet = require("helmet");
 
 dotenv.config();
-app.set("trust proxy", ["loopback", "linklocal", "uniquelocal"]);
+
+app.set("trust proxy", 1);
+
 app.use(express.json());
 app.use(cookieParser());
 app.use(
@@ -22,20 +24,23 @@ const allowedOrigins = [
   "https://admin-dashboard-clothing-pi.vercel.app"
 ];
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) return callback(null, true);
-      return callback(new Error("Not allowed by CORS"));
-    },
-    credentials: true,
-    methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
-    exposedHeaders: ["Authorization"],
-    preflightContinue: false,
-    optionsSuccessStatus: 200  })
-);
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true); // Postman أو Curl
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(null, false);
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+  exposedHeaders: ["Authorization"]
+}));
+
+app.options("*", cors({
+  origin: allowedOrigins,
+  credentials: true
+}));
+
 app.use('/', router);
 
 app.use((err, req, res, next) => {
