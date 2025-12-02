@@ -5,11 +5,13 @@ const nodemailer = require("nodemailer");
 
 async function sendEmail(to, OTP) {
   try {
- let transporter = nodemailer.createTransport({
-      service: "gmail",
+   const transporter = nodemailer.createTransport({
+      host: "smtp.gmail.com",
+      port: 587,
+      secure: false,
       auth: {
-        user: "yassefsea274@gmail.com",
-        pass: "vjgf odiu nnul krpg"
+        user: "yassefsea274@gmail.com",       
+        pass: "vjgf odiu nnul krpg"   
       }
     });
 

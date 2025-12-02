@@ -13,14 +13,12 @@ const sendOTPEmail = async(req,res) => {
     
     const {email, phone} = req.body;
     
-    // Validate input
     if (!email || !phone) {
       return res.status(400).json({ 
         message: "Email and phone are required" 
       });
     }
     
-    // Check if user already exists
     const result = await data.query(
       "SELECT id FROM users WHERE email = $1 OR phone = $2",
       [email, phone]
@@ -37,10 +35,8 @@ const sendOTPEmail = async(req,res) => {
     const otp = crypto.randomInt(100000, 999999).toString();
     console.log(`Generated OTP for ${email}: ${otp}`);
     
-    // Store OTP in cache
     otpCache.set(email, otp);
     
-    // Send email
     await sendEmail(email, otp);
     console.log(`OTP sent successfully to ${email}`);
     
@@ -102,6 +98,9 @@ if (!storedOtp || storedOtp !== otp) {
     return res.status(500).send({ message: "Server error" });
   }
 };
+
+
+
 
 const login = async (req, res) => {
   try {
