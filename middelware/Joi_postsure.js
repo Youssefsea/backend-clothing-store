@@ -35,8 +35,7 @@ const addProductSchema = Joi.object({
     .optional()
     .messages({
       "string.pattern.base": `"colors" must be a comma-separated string like "red,أحمر,blue,أزرق"`,
-    }),
-  is_active: Joi.boolean().default(true),
+    })
 });
 
 
