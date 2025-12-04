@@ -315,12 +315,11 @@ const confirmPayment = async (req, res) => {
       port: 587,
       secure: false,
       auth: {
-        user: "yassefsea274@gmail.com",       // إيميلك
-        pass: "vjgf odiu nnul krpg"    // App Password
+        user: "yassefsea274@gmail.com",       
+        pass: "vjgf odiu nnul krpg"    
       }
     });
 
-    // رسالة للأدمن
     await transporter.sendMail({
       from: `"My Shop" <yassefsea274@gmail.com>`,
       to: "yassefsea111@gmail.com",
