@@ -85,10 +85,14 @@ if (!storedOtp || storedOtp !== otp) {
 
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    await data.query(
-      "INSERT INTO users (name, email, password, phone) VALUES ($1, $2, $3, $4)",
-      [name, email, hashedPassword, phone]
-    );
+ let newId = await data.query("SELECT MAX(id) AS maxId FROM users");
+newId = newId.rows[0].maxid + 1;
+
+await data.query(
+  "INSERT INTO users (id, name, email, password, phone) VALUES ($1, $2, $3, $4, $5)",
+  [newId, name, email, hashedPassword, phone]
+);
+
 
     return res
       .status(201)
