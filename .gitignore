@@ -6,7 +6,7 @@ node_modules/
 .DS_Store
 Thumbs.db
 
-.BACEND_HANDOVER.md
+BACEND_HANDOVER.md
 
 .wwebjs_auth/
 .wwebjs_cache/
