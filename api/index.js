@@ -6,7 +6,7 @@ const helmet = require("helmet");
 
 dotenv.config();
 
-const router = require("./router");
+const router = require("../router");
 
 const app = express();
 
@@ -83,8 +83,6 @@ app.use(
     ],
 
     exposedHeaders: ["Authorization"],
-
-    optionsSuccessStatus: 200,
   })
 );
 
@@ -125,9 +123,6 @@ app.use((err, req, res, next) => {
   return res.status(500).json({
     success: false,
     message: "Internal Server Error",
-    ...(process.env.NODE_ENV === "development"
-      ? { error: err.message }
-      : {}),
   });
 });
 
