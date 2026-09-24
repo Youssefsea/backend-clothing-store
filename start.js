@@ -4,41 +4,19 @@ const dotenv = require("dotenv");
 const cookieParser = require("cookie-parser");
 const helmet = require("helmet");
 
-const router = require("./router");
-
 dotenv.config();
+
+const router = require("./router");
 
 const app = express();
 
-/*
-|--------------------------------------------------------------------------
-| Trust Proxy
-|--------------------------------------------------------------------------
-| Required when running behind Vercel/proxies so secure cookies and
-| request protocol handling work correctly.
-*/
 app.set("trust proxy", 1);
 
-/*
-|--------------------------------------------------------------------------
-| Body Parsers
-|--------------------------------------------------------------------------
-*/
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-/*
-|--------------------------------------------------------------------------
-| Cookies
-|--------------------------------------------------------------------------
-*/
 app.use(cookieParser());
 
-/*
-|--------------------------------------------------------------------------
-| Logging
-|--------------------------------------------------------------------------
-*/
 app.use((req, res, next) => {
   console.log(
     `${new Date().toISOString()} - ${req.method} ${req.url} - Origin: ${
@@ -49,11 +27,6 @@ app.use((req, res, next) => {
   next();
 });
 
-/*
-|--------------------------------------------------------------------------
-| Security Headers
-|--------------------------------------------------------------------------
-*/
 app.use(
   helmet({
     crossOriginResourcePolicy: {
@@ -64,36 +37,17 @@ app.use(
   })
 );
 
-/*
-|--------------------------------------------------------------------------
-| Allowed Origins
-|--------------------------------------------------------------------------
-*/
 const allowedOrigins = [
-  // Production Frontend
   "https://front-clothing-store.vercel.app",
-
-  // Admin Dashboard
   "https://admin-dashboard-clothing-pi.vercel.app",
-
-  // Local Frontend
   "http://localhost:3000",
   "http://localhost:3001",
-
-  // Existing backend/domain if still needed
   "https://backend-clothing-store2.obl.ee",
 ];
 
-/*
-|--------------------------------------------------------------------------
-| CORS
-|--------------------------------------------------------------------------
-*/
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Requests without Origin header:
-      // Postman, server-to-server, curl, etc.
       if (!origin) {
         return callback(null, true);
       }
@@ -134,31 +88,24 @@ app.use(
   })
 );
 
-/*
-|--------------------------------------------------------------------------
-| Routes
-|--------------------------------------------------------------------------
-*/
+app.get("/", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Clothes API is running",
+  });
+});
+
 app.use("/", router);
 
-/*
-|--------------------------------------------------------------------------
-| 404 Handler
-|--------------------------------------------------------------------------
-*/
 app.use((req, res) => {
   res.status(404).json({
+    success: false,
     message: "Route not found",
-    path: req.url,
+    path: req.originalUrl,
     method: req.method,
   });
 });
 
-/*
-|--------------------------------------------------------------------------
-| Global Error Handler
-|--------------------------------------------------------------------------
-*/
 app.use((err, req, res, next) => {
   console.error("Server Error:", {
     message: err.message,
@@ -167,47 +114,21 @@ app.use((err, req, res, next) => {
     method: req.method,
   });
 
-  /*
-  |--------------------------------------------------------------------------
-  | CORS Error
-  |--------------------------------------------------------------------------
-  */
   if (err.message && err.message.includes("CORS")) {
     return res.status(403).json({
+      success: false,
       message: "CORS error - Origin not allowed",
       origin: req.headers.origin || null,
     });
   }
 
-  /*
-  |--------------------------------------------------------------------------
-  | Generic Server Error
-  |--------------------------------------------------------------------------
-  */
   return res.status(500).json({
+    success: false,
     message: "Internal Server Error",
     ...(process.env.NODE_ENV === "development"
       ? { error: err.message }
       : {}),
   });
 });
-
-/*
-|--------------------------------------------------------------------------
-| Local Development
-|--------------------------------------------------------------------------
-| IMPORTANT:
-| Vercel should receive the Express app as a handler instead of opening
-| its own listening socket.
-|--------------------------------------------------------------------------
-*/
-if (require.main === module) {
-  const PORT = process.env.PORT || 6020;
-
-  app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
-}
-
 
 module.exports = app;
