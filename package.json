@@ -2,7 +2,7 @@
   "name": "clothes_shop",
   "version": "1.0.0",
   "description": "",
-  "main": "start.js",
+  "main": "index.js",
   "type": "commonjs",
   "scripts": {
     "start": "node start.js",
