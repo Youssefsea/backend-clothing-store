@@ -59,6 +59,48 @@ const confirmPaymentSchema = Joi.object({
   payment_screenshot: Joi.any().optional(),
 });
 
+const productSearchByNameSchema = Joi.object({
+  title: Joi.string().trim().min(1).max(150).required(),
+});
+
+const productCategorySchema = Joi.object({
+  category_name: Joi.string().trim().min(1).max(100).required(),
+});
+
+const productRangeSchema = Joi.object({
+  minPrice: Joi.number().min(0).required(),
+  maxPrice: Joi.number().min(Joi.ref('minPrice')).required(),
+});
+
+const productColorSchema = Joi.object({
+  color: Joi.string().trim().min(1).max(100).required(),
+});
+
+const productIdSchema = Joi.object({
+  id: Joi.number().integer().positive().required(),
+});
+
+const adminUserIdSchema = Joi.object({
+  user_id: Joi.number().integer().positive().required(),
+});
+
+const adminOrderLookupSchema = Joi.object({
+  user_id: Joi.number().integer().positive().required(),
+});
+
+const adminEmailLookupSchema = Joi.object({
+  email: Joi.string().email().required(),
+});
+
+const adminPhoneLookupSchema = Joi.object({
+  phone: Joi.string().pattern(/^[0-9]{10,15}$/).required(),
+});
+
+const orderStatusSchema = Joi.object({
+  order_id: Joi.number().integer().positive().required(),
+  status: Joi.string().trim().min(1).max(50).required(),
+});
+
 module.exports = {
   signupSchema,
   loginSchema,
@@ -66,4 +108,14 @@ module.exports = {
   addToCartSchema,
   delFromCartSchema,
   confirmPaymentSchema,
+  productSearchByNameSchema,
+  productCategorySchema,
+  productRangeSchema,
+  productColorSchema,
+  productIdSchema,
+  adminUserIdSchema,
+  adminOrderLookupSchema,
+  adminEmailLookupSchema,
+  adminPhoneLookupSchema,
+  orderStatusSchema,
 };

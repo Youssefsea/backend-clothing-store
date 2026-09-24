@@ -3,7 +3,7 @@
   const multer = require('../middelware/multer');
   const cloudinary = require('../Data/cloudinary');
   const { Readable } = require('stream');
-  const nodemailer = require("nodemailer");
+  const { sendEmail } = require('../Data/mailer');
   require('dotenv').config();
 
 
@@ -223,6 +223,7 @@
 
 const confirmPayment = async (req, res) => {
   const client = await data.connect();
+  let transactionStarted = false;
   try {
     console.log("🚀 بدء عملية تأكيد الدفع...");
     const user = req.user;
@@ -281,6 +282,7 @@ const confirmPayment = async (req, res) => {
     }
 
     await client.query('BEGIN');
+    transactionStarted = true;
 
     const orderQuery = await client.query(
       `INSERT INTO orders 
@@ -309,35 +311,27 @@ const confirmPayment = async (req, res) => {
     await client.query('COMMIT');
     console.log("🎉 تم إنشاء الطلب وتحديث المخزون ومسح الكارت بنجاح!");
 
-    // ===== إرسال الإيميل عبر Gmail SMTP =====
-    const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 587,
-      secure: false,
-      auth: {
-        user: "yassefsea274@gmail.com",       
-        pass: "vjgf odiu nnul krpg"    
+    try {
+      const notificationPromises = [];
+      if (process.env.ADMIN_EMAIL) {
+        notificationPromises.push(sendEmail(
+          process.env.ADMIN_EMAIL,
+          'تأكيد الطلب الجديد',
+          adminMessage(items, total, user, payment_method, address, payment_screenshot)
+        ));
       }
-    });
-
-    await transporter.sendMail({
-      from: `"My Shop" <yassefsea274@gmail.com>`,
-      to: "yassefsea111@gmail.com",
-      subject: 'تأكيد الطلب الجديد',
-      text: adminMessage(items, total, user, payment_method, address, payment_screenshot)
-    });
-
-    // رسالة للزبون
-    if (user.email) {
-      await transporter.sendMail({
-        from: `"My Shop" <yassefsea274@gmail.com>`,
-        to: user.email,
-        subject: 'تأكيد الطلب الجديد',
-        html: userMessage(items, total, user, payment_method, address)
-      });
+      if (user.email) {
+        notificationPromises.push(sendEmail(
+          user.email,
+          'تأكيد الطلب الجديد',
+          userMessage(items, total, user, payment_method, address)
+        ));
+      }
+      await Promise.all(notificationPromises);
+      console.log("✅ تم إرسال الإيميلات بنجاح");
+    } catch (notificationError) {
+      console.error("Order created, but email notification failed:", notificationError);
     }
-
-    console.log("✅ تم إرسال الإيميلات بنجاح عبر Gmail SMTP");
 
     return res.status(200).send({
       message: "Payment confirmed successfully",
@@ -348,7 +342,9 @@ const confirmPayment = async (req, res) => {
     });
 
   } catch (err) {
-    await client.query('ROLLBACK');
+    if (transactionStarted) {
+      await client.query('ROLLBACK');
+    }
     console.error("💥 خطأ في تأكيد الدفع:", err);
     return res.status(500).send({ message: "Server error during payment confirmation", error: err.message });
   } finally {

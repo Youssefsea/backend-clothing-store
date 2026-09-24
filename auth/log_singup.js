@@ -9,8 +9,6 @@ const otpCache = new NodeCache({ stdTTL: 60, checkperiod: 10 });
 
 const sendOTPEmail = async(req,res) => {
   try {
-    console.log("Send OTP request received:", req.body);
-    
     const {email, phone} = req.body;
     
     if (!email || !phone) {
@@ -31,10 +29,7 @@ const sendOTPEmail = async(req,res) => {
       });
     }
     
-    // Generate OTP
     const otp = crypto.randomInt(100000, 999999).toString();
-    console.log(`Generated OTP for ${email}: ${otp}`);
-    
     otpCache.set(email, otp);
     
     await sendEmail(email, otp);
@@ -68,6 +63,7 @@ const sendOTPEmail = async(req,res) => {
 
 
 const signup = async (req, res) => {
+
   try {
     const { name, email, password, phone,otp } = req.body;
     const storedOtp = otpCache.get(email);
@@ -80,8 +76,13 @@ if (!storedOtp || storedOtp !== otp) {
       otpCache.del(email);
 
 
-
-
+    const EmailCheck =
+      "SELECT id FROM users WHERE email = $1 OR phone = $2";
+    const result = await data.query(EmailCheck, [email, phone]);
+    const existing = result.rows;
+    if (existing.length > 0) {
+      return res.status(409).send({ message: "Email or phone already exists" });
+    }
 
     const hashedPassword = await bcrypt.hash(password, 12);
 

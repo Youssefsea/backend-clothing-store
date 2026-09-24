@@ -20,7 +20,7 @@ A complete e-commerce backend API for a clothing store built with Node.js and Po
 - **Database**: PostgreSQL
 - **Authentication**: JWT
 - **Image Storage**: Cloudinary
-- **Email**: Nodemailer
+- **Email**: Resend API
 - **Validation**: Joi
 - **Security**: Helmet, CORS, Rate Limiting
 

@@ -95,7 +95,7 @@ const deleteUser=async(req,res)=>{
 
 const getAllUsers=async(req,res)=>{
     try{
-        const result=await data.query('SELECT * FROM users');
+        const result=await data.query('SELECT id, name, email, role, phone FROM users');
         const users = result.rows;
         return res.status(200).send({message:'Users fetched successfully',users:users});
     }catch(err){
@@ -106,7 +106,7 @@ const getAllUsers=async(req,res)=>{
 const getUserByEmail=async(req,res)=>{
     try{
         const {email}=req.body;
-        const result=await data.query('SELECT * FROM users WHERE email = $1',[email]);
+        const result=await data.query('SELECT id, name, email, role, phone FROM users WHERE email = $1',[email]);
         const user = result.rows;
         return res.status(200).send({message:'User fetched successfully',user});
     }catch(err){
@@ -117,7 +117,7 @@ const getUserByEmail=async(req,res)=>{
 const getUserByPhone=async(req,res)=>{
     try{
         const {phone}=req.body;
-        const result=await data.query('SELECT * FROM users WHERE phone = $1',[phone]);
+        const result=await data.query('SELECT id, name, email, role, phone FROM users WHERE phone = $1',[phone]);
         const user = result.rows;
         return res.status(200).send({message:'User fetched successfully',user});
     }catch(err){

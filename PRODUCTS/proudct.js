@@ -2,7 +2,7 @@ const data=require('../Data/data')
 const NodeCache=require('node-cache')
 const cache=new NodeCache({stdTTL:60})
 const cloudinary = require('../Data/cloudinary')
-const { Readable } = require('stream')
+const { Readable } = require('stream');
 
 const getAllProducts=async(req,res)=>{
     try
@@ -171,7 +171,7 @@ const updateProduct = async (req, res) => {
       Number(stock) || 0
     );
 
-    let parameterCount = 7; // Starting from $7 since we have 6 basic fields
+    let parameterCount = 7;
 
     if (finalImageUrl) {
       updateFields.push(`image_url = $${parameterCount}`);
@@ -213,7 +213,7 @@ const updateProduct = async (req, res) => {
 
   } catch (err) {
     console.error('Update Product Error:', err);
-    return res.status(500).send({ message: 'Server error', error: err.message });
+    return res.status(500).send({ message: 'Server error' });
   }
 };
 
@@ -268,7 +268,7 @@ const UnActtiveActtiveProduct=async(req,res)=>{
       return res.status(200).send({ message: 'Products found', products });
     } catch (err) {
       console.error('Get Product By Color Error:', err);
-      return res.status(500).send({ message: 'Server error', error: err.message });
+      return res.status(500).send({ message: 'Server error' });
     }
   };
   
@@ -277,4 +277,3 @@ const UnActtiveActtiveProduct=async(req,res)=>{
 
 
 module.exports={getAllProducts,getProudctByName,getProductsByCategory,getProductsInRange,addProduct,updateProduct,UnActtiveActtiveProduct,getProductByColor};
-
