@@ -1,112 +1,213 @@
-const express = require('express');
-const app = express();
-const cors = require('cors');
-const dotenv = require('dotenv');
-const router = require('./router');
+const express = require("express");
+const cors = require("cors");
+const dotenv = require("dotenv");
 const cookieParser = require("cookie-parser");
 const helmet = require("helmet");
 
+const router = require("./router");
+
 dotenv.config();
 
+const app = express();
+
+/*
+|--------------------------------------------------------------------------
+| Trust Proxy
+|--------------------------------------------------------------------------
+| Required when running behind Vercel/proxies so secure cookies and
+| request protocol handling work correctly.
+*/
 app.set("trust proxy", 1);
 
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+/*
+|--------------------------------------------------------------------------
+| Body Parsers
+|--------------------------------------------------------------------------
+*/
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+
+/*
+|--------------------------------------------------------------------------
+| Cookies
+|--------------------------------------------------------------------------
+*/
 app.use(cookieParser());
 
-// Logging middleware
+/*
+|--------------------------------------------------------------------------
+| Logging
+|--------------------------------------------------------------------------
+*/
 app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.url} - Origin: ${req.headers.origin || 'No origin'}`);
+  console.log(
+    `${new Date().toISOString()} - ${req.method} ${req.url} - Origin: ${
+      req.headers.origin || "No origin"
+    }`
+  );
+
   next();
 });
+
+/*
+|--------------------------------------------------------------------------
+| Security Headers
+|--------------------------------------------------------------------------
+*/
 app.use(
   helmet({
-    crossOriginResourcePolicy: { policy: "cross-origin" },
+    crossOriginResourcePolicy: {
+      policy: "cross-origin",
+    },
     crossOriginEmbedderPolicy: false,
     contentSecurityPolicy: false,
   })
 );
 
+/*
+|--------------------------------------------------------------------------
+| Allowed Origins
+|--------------------------------------------------------------------------
+*/
 const allowedOrigins = [
+  // Production Frontend
   "https://front-clothing-store.vercel.app",
+
+  // Admin Dashboard
   "https://admin-dashboard-clothing-pi.vercel.app",
+
+  // Local Frontend
   "http://localhost:3000",
   "http://localhost:3001",
-  "https://backend-clothing-store2.obl.ee"
+
+  // Existing backend/domain if still needed
+  "https://backend-clothing-store2.obl.ee",
 ];
 
-app.use((req, res, next) => {
-  if (req.method === 'OPTIONS') {
-    const origin = req.headers.origin;
-    if (allowedOrigins.includes(origin) || !origin) {
-      res.header("Access-Control-Allow-Origin", origin || "*");
-      res.header("Access-Control-Allow-Credentials", "true");
-      res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
-      res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Accept, Origin");
-      res.header("Access-Control-Expose-Headers", "Authorization");
-    }
-    return res.sendStatus(200);
-  }
-  next();
-});
+/*
+|--------------------------------------------------------------------------
+| CORS
+|--------------------------------------------------------------------------
+*/
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // Requests without Origin header:
+      // Postman, server-to-server, curl, etc.
+      if (!origin) {
+        return callback(null, true);
+      }
 
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-    
-    console.log("CORS rejected origin:", origin);
-    return callback(new Error("Not allowed by CORS"), false);
-  },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  allowedHeaders: [
-    "Content-Type", 
-    "Authorization", 
-    "X-Requested-With", 
-    "Accept", 
-    "Origin",
-    "Cache-Control",
-    "Pragma"
-  ],
-  exposedHeaders: ["Authorization"],
-  optionsSuccessStatus: 200 
-}));
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
 
-app.use('/', router);
+      console.log("CORS rejected origin:", origin);
 
-app.use((req, res, next) => {
-  res.status(404).json({ 
+      return callback(new Error("Not allowed by CORS"));
+    },
+
+    credentials: true,
+
+    methods: [
+      "GET",
+      "POST",
+      "PUT",
+      "DELETE",
+      "PATCH",
+      "OPTIONS",
+    ],
+
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Requested-With",
+      "Accept",
+      "Origin",
+      "Cache-Control",
+      "Pragma",
+    ],
+
+    exposedHeaders: ["Authorization"],
+
+    optionsSuccessStatus: 200,
+  })
+);
+
+/*
+|--------------------------------------------------------------------------
+| Routes
+|--------------------------------------------------------------------------
+*/
+app.use("/", router);
+
+/*
+|--------------------------------------------------------------------------
+| 404 Handler
+|--------------------------------------------------------------------------
+*/
+app.use((req, res) => {
+  res.status(404).json({
     message: "Route not found",
     path: req.url,
-    method: req.method
+    method: req.method,
   });
 });
 
+/*
+|--------------------------------------------------------------------------
+| Global Error Handler
+|--------------------------------------------------------------------------
+*/
 app.use((err, req, res, next) => {
   console.error("Server Error:", {
     message: err.message,
     stack: err.stack,
     url: req.url,
     method: req.method,
-    headers: req.headers
   });
-  
-  if (err.message.includes('CORS')) {
-    return res.status(403).json({ 
+
+  /*
+  |--------------------------------------------------------------------------
+  | CORS Error
+  |--------------------------------------------------------------------------
+  */
+  if (err.message && err.message.includes("CORS")) {
+    return res.status(403).json({
       message: "CORS error - Origin not allowed",
-      origin: req.headers.origin 
+      origin: req.headers.origin || null,
     });
   }
-  
-  res.status(500).json({ 
+
+  /*
+  |--------------------------------------------------------------------------
+  | Generic Server Error
+  |--------------------------------------------------------------------------
+  */
+  return res.status(500).json({
     message: "Internal Server Error",
-    error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    ...(process.env.NODE_ENV === "development"
+      ? { error: err.message }
+      : {}),
   });
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+/*
+|--------------------------------------------------------------------------
+| Local Development
+|--------------------------------------------------------------------------
+| IMPORTANT:
+| Vercel should receive the Express app as a handler instead of opening
+| its own listening socket.
+|--------------------------------------------------------------------------
+*/
+if (require.main === module) {
+  const PORT = process.env.PORT || 6020;
+
+  app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
+}
+
+
+module.exports = app;
