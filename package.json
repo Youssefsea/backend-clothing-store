@@ -1,13 +1,13 @@
 {
   "name": "clothes_shop",
   "version": "1.0.0",
+  "description": "",
   "main": "api/index.js",
   "type": "commonjs",
   "scripts": {
     "start": "node start.js",
     "test": "echo \"All tests passed\""
-  }
-},
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
